@@ -167,6 +167,41 @@ def vis_rain_bin (df):
 
 
 
+# # Visualisation of rainfall and sales over months 
+
+def rainfall_month_sales (df):
+    fig, axes1 = plt.subplots(4,2, figsize = (12,15), sharey = True)
+    axes1 = axes1.flatten()
+
+    df = df[df["item_category"] == "daily total"]
+
+    for i, store in enumerate(df["store_name"].unique()):
+        store_df = df[df["store_name"] == store]
+
+        # Sales
+
+        sns.barplot(data = store_df, x = "month", y = "total_amount", errorbar=("ci",False), 
+                    alpha = 0.5, color = "#3578FF", ax = axes1[i])
+
+        axes1[i].set_title(store, size = 24)
+        axes1[i].set_xlabel('')
+        axes1[i].set_ylabel('Total Amount', size = 18)
+        axes1[i].set_xticklabels(axes1[i].get_xticklabels(), rotation=45, size = 13)
+        #axes1[i].set_yticklabels(axes1[i].get_yticklabels(), size = 16)
+
+        axes2 = axes1[i].twinx()
+
+        # Temperature
+
+        sns.lineplot(data = store_df, x = "month", y = "precipitation_hours", errorbar=("ci",False), color = "red", ax = axes2)
+
+        axes2.set_ylabel('Precipitation (hours)', size = 18)
+        #axes2.set_yticklabels(axes2.get_yticklabels(), size = 16)
+
+    plt.tight_layout()
+
+
+
 
 
 ## Sunshine duration
@@ -282,49 +317,38 @@ def vis_temp_bin (df):
     plt.tight_layout()
 
 
-
 # Visualisation of temperature and sales over months 
 
 
-def ts_predicted (df):
-    fig, axes = plt.subplots(4,2, figsize = (20,17), sharey = True)
-    axes = axes.flatten()
+def temp_month_sales (df):
+    fig, axes1 = plt.subplots(4,2, figsize = (12,15), sharey = True)
+    axes1 = axes1.flatten()
+
+    df = df[df["item_category"] == "daily total"]
 
     for i, store in enumerate(df["store_name"].unique()):
-        store_df = df[(df["store_name"] == store)]
-        cutoff_date = pd.to_datetime("2024-05-25")
+        store_df = df[df["store_name"] == store]
 
-        if i == 6:
-            sns.lineplot(data = store_df, x = "date", y = "total_amount", ax = axes[i], marker = "o", markersize = 8,linewidth = 4, label = "Observed Sales")
+        # Sales
 
-            sns.lineplot(data = store_df[store_df["date"] >= cutoff_date], x = "date", y = "Predicted", label = "Predicted Sales", marker = "o", markersize = 8, linewidth = 4, ax = axes[i])
-            
-        else: 
-            sns.lineplot(data = store_df, x = "date", y = "total_amount", ax = axes[i], marker = "o", markersize = 8,linewidth = 4)
+        sns.barplot(data = store_df, x = "month", y = "total_amount", errorbar=("ci",False),  color = "#3578FF", ax = axes1[i])
 
-            sns.lineplot(data = store_df[store_df["date"] >= cutoff_date], x = "date", y = "Predicted", marker = "o", markersize = 8, linewidth = 4, ax = axes[i])
+        axes1[i].set_title(store, size = 24)
+        axes1[i].set_xlabel('')
+        axes1[i].set_ylabel('Total Amount', size = 18)
+        axes1[i].set_xticklabels(axes1[i].get_xticklabels(), rotation=45, size = 13)
+        #axes1[i].set_yticklabels(axes1[i].get_yticklabels(), size = 16)
 
-        axes[i].axvline(x = cutoff_date, color='black', linestyle='--', linewidth = 3)
+        axes2 = axes1[i].twinx()
 
-        axes[i].set_title(store, size = 30)
-        axes[i].set_xlabel("May, 2024", size = 24)
-        axes[i].set_ylabel("Amount Sold", size = 20)
-        axes[i].xaxis.set_major_formatter(md.DateFormatter('%m-%d'))
-        axes[i].tick_params(axis='y', labelsize=16)
-        axes[i].tick_params(axis='x', labelsize=20, rotation=45)
+        # Temperature
 
-        if i == 6:
-            legend = axes[i].legend(fontsize = 18, loc = "lower left")
-            frame = legend.get_frame().set_facecolor("#EEEEEE")
+        sns.lineplot(data = store_df, x = "month", y = "temperature_2m_mean", errorbar=("ci",False), color = "red", ax = axes2)
 
-    for j in range(i + 1, len(axes)):
-        fig.delaxes(axes[j])
-    
+        axes2.set_ylabel('Temperature (°C)', size = 18)
+        #axes2.set_yticklabels(axes2.get_yticklabels(), size = 16)
+
     plt.tight_layout()
-
-
-
-
 
 
 
@@ -539,7 +563,7 @@ def ts_predicted (df):
 
 
 
-# Correlation
+# Correlations
 
 ## total amount with variable, by store
 
@@ -592,3 +616,18 @@ def anova_pvalue(df,cat_col,num_col):
         AnovaResults = ss.f_oneway(*CategoryGroupLists)
         p_value = round(AnovaResults[1],3)
         print(store + ": ", p_value)
+
+
+
+def anova_pvalue_allstores(df,cat_col,num_col):
+    
+    print(cat_col, "\n")
+    df = df[df["item_category"] == "daily total"]
+    if isinstance(cat_col, int) or isinstance(cat_col, float):
+        df = df.groupby("date").agg({cat_col:"mean", "total_amount":"sum"})
+    else:
+        df = df.groupby(["date",cat_col]).agg({"total_amount":"sum"}).reset_index()
+    CategoryGroupLists = df.groupby(cat_col)[num_col].apply(list)
+    AnovaResults = ss.f_oneway(*CategoryGroupLists)
+    p_value = round(AnovaResults[1],3)
+    print(p_value)
