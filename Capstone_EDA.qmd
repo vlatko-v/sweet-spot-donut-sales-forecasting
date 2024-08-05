@@ -1,0 +1,319 @@
+---
+title: "Capstone Project"
+author: "Alex, Rachel, Vlatko, Malte"
+date: "2024-06-06"
+format: html
+execute: 
+  cache: true
+  echo: false
+  error: true
+jupyter: python3
+editor:
+  render-on-save: true
+---
+
+# load libraries and data
+
+```{python}
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import datetime as dt
+
+from sklearn.model_selection import TimeSeriesSplit
+```
+
+
+```{python}
+%run functions_EDA.py
+```
+
+```{python}
+pd.set_option("display.max_columns", None)
+```
+
+```{python}
+d = pd.read_csv("data/daily_sales_report.csv")
+school_h_be = pd.read_csv("data/hol_school_b.csv")
+school_h_hh = pd.read_csv("data/hol_school_h.csv")
+```
+
+
+# EDA 
+
+
+## Converting "date" to datetime 
+
+```{python}
+d['date'] = pd.to_datetime(d['date'])
+```
+
+
+
+# Feature engineering 
+
+## Categorizing
+
+```{python}
+
+# Apply the function to create the 'item_category' column
+
+d['item_category'] = d['item_name'].apply(categorize_item)
+```
+
+
+
+
+## Calculating total amount
+
+```{python}
+d['total_amount'] = d.apply(calculate_total_amount, axis=1)
+```
+
+
+## Dropping duplicates
+
+```{python}
+d = drop_duplicates(d)
+```
+
+
+
+## Remove stores in Eppendorf, Schöneberg, Hauptbahnhof from dataset 
+
+```{python}
+d = d[(d["date"] <= pd.to_datetime("2024-05-31")) &
+           (-d["store_name"].isin(["Eppendorf","Schöneberg","Hauptbahnhof", 'Hamburg Hauptbahnhof',"KaDeWe"]))]
+```
+
+
+## Daily total 
+
+```{python}
+d = daily_total(d)
+```
+
+
+
+## Adding weather variables
+
+```{python}
+d = weather_data(d)
+```
+
+```{python}
+d["sunshine_duration"] = d["sunshine_duration"]/3600
+```
+
+
+
+## Balancing Item Categories
+
+```{python}
+
+updated_d = update_item_category(d)
+
+```
+
+
+```{python}
+updated_d[updated_d["item_category"] == "other"]["item_name"].value_counts()
+```
+
+
+```{python}
+updated_d["item_category"].value_counts()
+```
+
+
+```{python}
+updated_d = updated_d[~updated_d["item_category"].isin(["other","not_donut"])].reset_index(drop = True)
+```
+
+
+```{python}
+updated_d["item_category"].value_counts()
+```
+
+
+
+## Drop year and month features to avoid duplicates below
+
+```{python}
+updated_d = updated_d.drop(["year","month"], axis = 1)
+```
+
+
+## Adding holidays
+
+```{python}
+updated_d = hol_pub(updated_d)
+```
+
+```{python}
+updated_d = hol_school(updated_d, school_h_be, school_h_hh)
+```
+
+
+
+## Adding date info
+
+```{python}
+updated_d = date_info(updated_d)
+```
+
+
+## Create NYE dummy
+
+```{python}
+updated_d['nye'] = updated_d['date'].apply(lambda x: 1 if (x.month ==12 and x.day ==31) else 0)
+```
+
+## Create Valentine's day dummy
+
+```{python}
+updated_d['valentines_day'] = updated_d['date'].apply(lambda x: 1 if (x.month ==2 and x.day ==14) else 0)
+```
+
+## Create Halloween dummy
+
+```{python}
+updated_d['halloween'] = updated_d['date'].apply(lambda x: 1 if (x.month == 10 and (x.day ==29 or x.day ==30 or x.day ==31)) else 0)
+```
+
+
+## Create "weekend" dummy
+
+```{python}
+updated_d["weekend"] = updated_d["weekday"].apply(lambda x: 1 if x in [5,6] else 0)
+```
+
+
+## Adding "street_market" dummy
+
+```{python}
+updated_d  = dummy_street_market(updated_d)
+```
+
+
+## Create "public_space" dummy
+
+```{python}
+updated_d["public_space"] = updated_d["store_name"].apply(lambda x: 1 if x in ["Potsdamer","Altona","KaDeWe","Hamburg Hauptbahnhof","Mitte"] else 0)
+```
+
+
+
+## Create "box_deal" dummy
+
+```{python}
+updated_d["box_deal"] = updated_d["type_name"].apply(lambda x: 1 if x in "box" else 0)
+```
+
+
+
+## Binning weather variables
+
+### Rainfall
+
+```{python}
+updated_d["rainfall_bins"] = pd.cut(updated_d["precipitation_hours"], bins=[updated_d["precipitation_hours"].min() - 1, 4, 8, 12, 16, updated_d["precipitation_hours"].max() + 1], labels = ["0-4 hrs", "4-8 hrs" ,"8-12 hrs", "12-16 hrs", "> 16 hrs"])
+```
+
+
+
+### Temperature
+
+```{python}
+updated_d["temp_bins"] = pd.cut(updated_d["temperature_2m_mean"], bins=[updated_d["temperature_2m_mean"].min() - 1, 0, 10, 15, 20, 25, d["temperature_2m_mean"].max() + 1], labels = ["< 0°C", "0 - 10°C", "10 - 15°C", "15 - 20°C", "20 - 25°C", "> 25°C"])
+```
+
+
+### Sunshine
+
+```{python}
+updated_d["sunshine_bins"] = pd.cut(updated_d["sunshine_duration"], bins=[updated_d["sunshine_duration"].min() - 1, 4, 8, 12, d["sunshine_duration"].max() + 1], labels = ["0-4 hrs", "4-8 hrs", "8-12 hrs", "> 12 hrs"])
+```
+
+
+### Drop ID columns
+
+```{python}
+updated_d = updated_d.drop(["location_id","store_id","type_id","item_id"], axis = 1)
+```
+
+
+
+## Create lagged variables
+
+```{python}
+updated_d  = lag(updated_d)
+```
+
+
+
+
+## Time Series split
+
+```{python}
+updated_d = updated_d.set_index("date")
+```
+
+```{python}
+days = np.sort(updated_d.index.unique())
+days
+```
+
+```{python}
+tscv = TimeSeriesSplit(n_splits=2, test_size = 7)
+list(tscv.split(days))
+```
+
+
+```{python}
+for train_index, test_index in tscv.split(days):
+    train_days, test_days = days[train_index], days[test_index]
+    train, test = updated_d.loc[train_days], updated_d.loc[test_days]
+
+```
+
+```{python}
+updated_d = updated_d.reset_index()
+```
+
+
+```{python}
+train = train.sort_values("date", ascending = False)
+test = test.sort_values("date", ascending = False)
+```
+
+```{python}
+train = train.reset_index()
+test = test.reset_index()
+```
+
+
+### days back for both test and train
+```{python}
+train['days_back'] =(datetime(2024, 5, 24) - train['date']).dt.days
+test['days_back'] =(datetime(2024, 5, 31) - test['date']).dt.days
+```
+
+
+### remove lag1, lag2 and lag7 in test dataset
+
+```{python}
+test.drop(["lag1","lag2","lag7"], axis = 1, inplace = True)
+```
+
+
+
+# Creating .csv files
+
+```{python}
+updated_d.to_csv("data/cleaned_df.csv", index = False)
+
+train.to_csv("data/train_df.csv", index=False)
+test.to_csv("data/test_df.csv", index=False)
+```

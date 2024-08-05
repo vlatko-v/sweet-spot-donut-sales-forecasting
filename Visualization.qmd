@@ -1,0 +1,315 @@
+
+# Load libraries and data
+
+
+```{python}
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
+import seaborn as sns
+
+```
+
+```{python}
+%run functions_vis.py
+%run functions_EDA.py
+```
+
+```{python}
+pd.set_option("display.max_columns", None)
+```
+
+# Loading dataset
+
+```{python}
+d = pd.read_csv("data/train_df.csv")
+```
+
+
+## Converting "date" to datetime 
+
+```{python}
+d['date'] = pd.to_datetime(d['date'])
+```
+
+
+
+
+# Visualizations
+
+## Histogram
+
+```{python}
+vis_total_amount_hist(d)
+```
+
+
+```{python}
+d[(d["item_category"] == "daily total")].groupby("store_name")["total_amount"].mean()
+```
+
+
+
+## Time series 
+
+```{python}
+ts_lineplot(d)
+```
+
+
+```{python}
+ts_lineplot_stacked(d)
+
+# Branch 1 = Danziger
+# Branch 2 = Maybachufer
+# Branch 3 = Potsdamer
+```
+
+
+
+
+
+## Weather data
+
+### Rainfall
+
+```{python}
+vis_rain(d)
+```
+
+```{python}
+corr_total_amount_by_store(d, "precipitation_hours")
+```
+
+
+```{python}
+vis_rain_bin(d)
+```
+
+
+```{python}
+anova_pvalue(d, "rainfall_bins", "total_amount")
+```
+
+
+
+
+### Temperature
+
+```{python}
+vis_temp(d)
+```
+
+```{python}
+corr_total_amount_by_store(d, "temperature_2m_mean")
+```
+
+
+```{python}
+vis_temp_bin(d)
+```
+
+```{python}
+d[d["item_category"] == "daily total"].groupby("temp_bins")["total_amount"].mean()
+```
+
+
+
+```{python}
+anova_pvalue(d, "temp_bins", "total_amount")
+```
+
+```{python}
+pd.Categorical(d['month'], categories=[range(1,13)], ordered=True)
+```
+
+```{python}
+def temp_sales (df):
+    fig, axes1 = plt.subplots(4,2, figsize = (12,15), sharey = True)
+    axes1 = axes1.flatten()
+
+
+    for i, store in enumerate(df["store_name"].unique()):
+        store_df = df[df["store_name"] == store]
+
+        # Sales
+
+        sns.barplot(data = store_df, x = "month", y = "total_amount", errorbar=("ci",False),  color = "#3578FF", ax = axes1[i])
+
+        axes1[i].set_title(store, size = 24)
+        axes1[i].set_xlabel('')
+        axes1[i].set_ylabel('Total Amount', size = 18)
+        axes1[i].set_xticklabels(axes1[i].get_xticklabels(), rotation=45, size = 15)
+        axes1[i].set_yticklabels(axes1[i].get_yticklabels(), size = 16)
+
+        axes2 = axes1[i].twinx()
+
+        # Temperature
+
+        sns.lineplot(data = store_df, x = "month", y = "temperature_2m_mean", errorbar=("ci",False), color = "red", ax = axes2)
+
+        axes2.set_ylabel('Temperature (°C)', size = 18)
+        axes2.set_yticklabels(axes2.get_yticklabels(), size = 16)
+
+    
+    plt.tight_layout()
+
+```
+
+
+```{python}
+temp_sales(d)
+```
+
+
+
+
+
+### Sunshine duration
+
+```{python}
+vis_sunshine(d)
+```
+
+```{python}
+corr_total_amount_by_store(d, "sunshine_duration")
+```
+
+
+```{python}
+vis_sunshine_bin(d)
+```
+
+
+```{python}
+anova_pvalue(d, "sunshine_bins", "total_amount")
+```
+
+
+
+
+
+## Holidays
+
+### Public holidays
+
+```{python}
+vis_pub_hol(d)
+```
+
+```{python}
+anova_pvalue(d, "hol_pub", "total_amount")
+```
+
+
+
+### School holidays
+```{python}
+vis_school_hol(d)
+```
+
+```{python}
+anova_pvalue(d, "hol_school", "total_amount")
+```
+
+
+
+
+## Public Spaces
+
+```{python}
+vis_pub_spaces(d)
+```
+
+
+
+
+## Time variables
+
+### Weeks of the year
+
+```{python}
+vis_weeks(d)
+```
+
+```{python}
+anova_pvalue(d, "week_year", "total_amount")
+```
+
+
+
+
+### Weekdays
+
+```{python}
+vis_weekday(d)
+```
+
+
+```{python}
+anova_pvalue(d, "weekday", "total_amount")
+```
+
+
+
+### Weekend
+
+```{python}
+vis_weekend(d)
+```
+
+
+```{python}
+anova_pvalue(d, "weekend", "total_amount")
+```
+
+
+
+
+
+
+
+
+
+
+```{python}
+d.groupby(["store_name","date"])["total_amount"].sum()
+```
+
+
+
+
+
+
+## Item Categories Balance
+
+```{python}
+
+d['item_category'].value_counts().plot(kind='bar', color='skyblue')
+
+
+# Add labels and title
+plt.title('Amount of Data per Item Category')
+plt.xlabel('Item Category')
+plt.ylabel('Count')
+
+# Show plot
+plt.show()
+
+```
+
+
+```{python}
+sns.boxplot(data = d, x = "item_category", y = "total_amount")
+```
+
+
+```{python}
+d.groupby("item_category")["total_amount"].sum().sort_values(ascending=False).sum()
+```
+
+
+```{python}
+d.groupby("item_category")["total_amount"].sum().sort_values(ascending=False)[-1] / d.groupby("item_category")["total_amount"].sum().sort_values(ascending=False).sum()
+```
