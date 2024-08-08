@@ -163,3 +163,13 @@ cython_debug/
 
 
 .python-version
+
+# qmd files
+old_Capstone_EDA.qmd
+timeseries.qmd
+
+# catboost output
+catboost_info
+
+# sktime test
+sktime_cv_tuning.ipynb

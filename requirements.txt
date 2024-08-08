@@ -18,3 +18,4 @@ scipy==1.10.1
 catboost == 1.2.5
 widgetsnbextension == 4.0.11
 optuna == 3.6.1
+sktime == 0.31.0
