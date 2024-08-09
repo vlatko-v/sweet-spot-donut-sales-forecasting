@@ -138,19 +138,9 @@ def pred_test(train,test,model,numfeat,catfeat):
 
     train_store_last_day = train[(train.store_name==store) & (train.date == train.date.max())]
     train_store_two_days_before = train[(train.store_name==store) & (train.date==train.date.max() - pd.Timedelta(days = 1))]
-    train_store_three_days_before = train[(train.store_name==store) & (train.date==train.date.max() - pd.Timedelta(days = 2))]
-    train_store_four_days_before = train[(train.store_name==store) & (train.date==train.date.max() - pd.Timedelta(days = 3))]
-    train_store_five_days_before = train[(train.store_name==store) & (train.date==train.date.max() - pd.Timedelta(days = 4))]
-    train_store_six_days_before = train[(train.store_name==store) & (train.date==train.date.max() - pd.Timedelta(days = 5))]
-    train_store_week_before = train[(train.store_name==store) & (train.date==train.date.max() - pd.Timedelta(days = 6))]
 
     lag_value = train_store_last_day['total_amount'].iloc[0]
     lag_value2 = train_store_two_days_before["total_amount"].iloc[0]
-    lag_value3 = train_store_three_days_before["total_amount"].iloc[0]
-    lag_value4 = train_store_four_days_before["total_amount"].iloc[0]
-    lag_value5 = train_store_five_days_before["total_amount"].iloc[0]
-    lag_value6 = train_store_six_days_before["total_amount"].iloc[0]
-    lag_value7 = train_store_week_before['total_amount'].iloc[0]
 
     pred_daily_amount = {}
 
@@ -158,24 +148,15 @@ def pred_test(train,test,model,numfeat,catfeat):
     for date in date_range:
 
         x = test_store[test_store.date == date][catfeat + numfeat]
-        x['lag1'] = lag_value
-        x["lag2"] = lag_value2
-        x["lag3"] = lag_value3
-        x["lag4"] = lag_value4
-        x["lag5"] = lag_value5
-        x["lag6"] = lag_value6
-        x["lag7"] = lag_value7
+        x["total_amount_lag_1"] = lag_value
+        x["total_amount_lag_2"] = lag_value2
 
         pred_amount = model.predict(x)[0]
-        pred_daily_amount[date] = [pred_amount, lag_value, lag_value2, lag_value7]
+        pred_daily_amount[date] = [pred_amount, lag_value, lag_value2]
     
         lag_value = pred_amount
-        lag_value2 = x["lag1"].iloc[0]
-        lag_value3 = x["lag2"].iloc[0]
-        lag_value4 = x["lag3"].iloc[0]
-        lag_value5 = x["lag4"].iloc[0]
-        lag_value6 = x["lag5"].iloc[0]
-        lag_value7 = x["lag6"].iloc[0]
+        lag_value2 = x["total_amount_lag_1"].iloc[0]
+  
 
     return pred_daily_amount
 
@@ -185,7 +166,7 @@ def pred_test(train,test,model,numfeat,catfeat):
 
   test["all"]  = test.apply(lambda x: storewise_daily_forecast[x.store_name][x.date], axis=1)
 
-  test[['pred_total_amount',"lag1","lag2","lag7"]]  = test["all"].apply(pd.Series)
+  test[['pred_total_amount',"total_amount_lag_1","total_amount_lag_2"]]  = test["all"].apply(pd.Series)
 
   test = test.drop("all", axis = 1)
 

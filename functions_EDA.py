@@ -63,7 +63,6 @@ def lag(d):
     ["date","store_name","item_category","total_amount"]]
     dl['lag1'] =dl.groupby("store_name")["total_amount"].shift(periods = -1)
     dl['lag2'] =dl.groupby("store_name")["total_amount"].shift(periods = -2)
-    dl["lag7"] = dl.groupby("store_name")["total_amount"].shift(periods = -7)
     dl = dl.drop("total_amount", axis =1)
     d_new =pd.merge(d,dl,on=["date","store_name","item_category"], how ='left')
     return d_new
