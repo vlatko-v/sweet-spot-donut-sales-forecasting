@@ -9,6 +9,7 @@ from sklearn.model_selection import TimeSeriesSplit
 from sklearn.preprocessing import StandardScaler
 import datetime as dt
 
+from sktime.split import ExpandingWindowSplitter
 
 # adjusted r-squared
 # arguments: r-squared, dataframe with features 
@@ -50,6 +51,7 @@ def create_val_set(df):
     return train, val
 
 
+
 # Create validation folds
 
 def create_train_validation_folds(df):
@@ -63,6 +65,36 @@ def create_train_validation_folds(df):
         last_val_date = first_val_date - dt.timedelta(days=1)
     cv = cv[::-1]
     return cv
+
+
+
+# creating window splitter function for sktime's time-series cv plot
+
+def window_splitter_prep(train, validation_length, num_folds):
+
+    def get_initial_window_size(store_group, validation_length, num_folds):
+        total_periods = len(store_group.index.get_level_values("date").unique())
+        initial_window = total_periods - validation_length * num_folds
+        return initial_window
+
+    cv_list = []
+
+    for (store,item), group in train.groupby(["store_name","item_category"]):
+
+        # Calculate the initial window size for the current store
+        initial_window = get_initial_window_size(group, validation_length, num_folds)
+
+        # Initialize the ExpandingWindowSplitter for the current group
+        splitter = ExpandingWindowSplitter(
+            initial_window=initial_window,
+            step_length=7,
+            fh=list(range(1, 7 + 1))
+        )
+
+        cv_list.append(({f"{store}"+"_"+f"{item}":splitter},
+                            {f"{store}"+"_"+f"{item}":group}))
+
+    return cv_list
 
 
 
@@ -82,6 +114,8 @@ def mape_stores(data, pred):
   mape_stores.columns =['Store name', 'MAPE']
   return mape_stores
 
+
+
 # observed, predicted and error for each store and date
 # arguments:
 # train / test dataset
@@ -93,6 +127,7 @@ def diff_overview(data,pred,stores):
 
   sum_ =pd.DataFrame({
     'Store name': data["store_name"],
+    "Product category": data["item_category"],
     'Date': data["date"],
     'Observed': data["total_amount"],
     'Predicted': pred,
@@ -124,53 +159,80 @@ def fit_overview(ytrain, ytrainpred, ytest, ytestpred):
 # arguments:
 # train and test data
 # model which was already instantiated
-# catfeat, numfeat: list of categorical and numerical features
-  
-def pred_test(train,test,model,numfeat,catfeat):
-  
-  def forecast_amount(store, model):
 
-    start_date = test.date.min()
-    end_date = test.date.max()
+def pred_test(train,test,model):
+  
+  def forecast_amount(store, category, model):
+
+    start_date = test.index.get_level_values("date").min()
+    end_date = test.index.get_level_values("date").max()
     date_range = pd.date_range(start = start_date, end = end_date)
 
-    test_store = test[(test.store_name==store)]
+    # Training data for the specific store and product category
+    train_store_category = train[(train.store_name == store) & (train.item_category == category)]
 
-    train_store_last_day = train[(train.store_name==store) & (train.date == train.date.max())]
-    train_store_two_days_before = train[(train.store_name==store) & (train.date==train.date.max() - pd.Timedelta(days = 1))]
+    # Initialize the lag values
+    lag_value = train_store_category['total_amount'].iloc[-1]
+    lag_value2 = train_store_category['total_amount'].iloc[-2]
+    lag_value3 = train_store_category['total_amount'].iloc[-3]
 
-    lag_value = train_store_last_day['total_amount'].iloc[0]
-    lag_value2 = train_store_two_days_before["total_amount"].iloc[0]
+    # Initialize the moving averages and moving standard deviation
+
+    moving_avg_7 = train_store_category.tail(7)['total_amount'].mean()
+    moving_avg_15 = train_store_category.tail(15)['total_amount'].mean()
+    moving_avg_30 = train_store_category.tail(30)['total_amount'].mean()
+    moving_std_4 = train_store_category.tail(4)['total_amount'].std()
+    
 
     pred_daily_amount = {}
 
-
     for date in date_range:
 
-        x = test_store[test_store.date == date][catfeat + numfeat]
-        x["total_amount_lag_1"] = lag_value
-        x["total_amount_lag_2"] = lag_value2
+        x = test[(test.store_name == store) & (test.item_category == category) & (test.index.get_level_values("date") == date)]
+        x.loc[:, "total_amount_lag_1"] = lag_value
+        x.loc[:, "total_amount_lag_2"] = lag_value2
+        x.loc[:, "total_amount_lag_3"] = lag_value3
+        x.loc[:, "total_amount_mean_1_7"] = moving_avg_7
+        x.loc[:, "total_amount_mean_1_15"] = moving_avg_15
+        x.loc[:, "total_amount_mean_1_30"] = moving_avg_30
+        x.loc[:, "total_amount_std_1_4"] = moving_std_4
+
+        x = x[train.drop("total_amount", axis = 1).columns]
 
         pred_amount = model.predict(x)[0]
-        pred_daily_amount[date] = [pred_amount, lag_value, lag_value2]
-    
+
+        pred_daily_amount[date] = [pred_amount, lag_value, lag_value2, lag_value3, moving_avg_7, moving_avg_15, moving_avg_30, moving_std_4]
+
+        # Updating lag values
         lag_value = pred_amount
-        lag_value2 = x["total_amount_lag_1"].iloc[0]
-  
+        lag_value2 = pred_daily_amount[date][1]
+        lag_value3 = pred_daily_amount[date][2]
+
+
+        # Updating the moving averages and standard deviation by shifting the windows
+        train_store_category = pd.concat([train_store_category.iloc[1:], pd.DataFrame([{"total_amount": pred_amount}])], ignore_index=True)
+        
+        moving_avg_7 = train_store_category.tail(7)['total_amount'].mean()
+        moving_avg_15 = train_store_category.tail(15)['total_amount'].mean()
+        moving_avg_30 = train_store_category.tail(30)['total_amount'].mean()
+        moving_std_4 = train_store_category.tail(4)['total_amount'].std()
 
     return pred_daily_amount
 
-  storewise_daily_forecast = {store:forecast_amount(store, model) for store in test.store_name.unique()}
+  daily_forecast_store_cat = {(store, category): forecast_amount(store, category, model)
+                               for store in test.store_name.unique()
+                               for category in test.item_category.unique()}
 
-  test['pred_total_amount'] = test.apply(lambda x: storewise_daily_forecast[x.store_name][x.date], axis=1)
+  test = pd.concat([test.reset_index(), 
+           test.reset_index().apply(lambda x: daily_forecast_store_cat[(x["store_name"], x["item_category"])][x["date"]], axis = 1)], axis =1,
+           )
 
-  test["all"]  = test.apply(lambda x: storewise_daily_forecast[x.store_name][x.date], axis=1)
+  test[['pred_total_amount',"total_amount_lag_1","total_amount_lag_2","total_amount_lag_3", "total_amount_mean_7",
+        "total_amount_mean_15","total_amount_mean_30","total_amount_std_4"]]  = test[0].apply(pd.Series)
 
-  test[['pred_total_amount',"total_amount_lag_1","total_amount_lag_2"]]  = test["all"].apply(pd.Series)
-
-  test = test.drop("all", axis = 1)
-
+  test = test.drop(0, axis = 1)
+  test = test.set_index("date")
 
   ytestpred = test['pred_total_amount']
 
-  return test, ytestpred  
+  return test, ytestpred
