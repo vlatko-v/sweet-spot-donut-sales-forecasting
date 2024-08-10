@@ -104,14 +104,24 @@ def window_splitter_prep(train, validation_length, num_folds):
 # train / test dataset
 # ytrainpred / ytestpred
 
-def mape_stores(data, pred):
-  sum_ =pd.DataFrame({
-    'Store name': data["store_name"],
-    'Observed': data["total_amount"],
-    'Predicted': pred})
-  sum_['mape'] =abs((sum_['Observed'] -sum_['Predicted'])/sum_['Observed'])*100
-  mape_stores =sum_.groupby('Store name')['mape'].mean().reset_index()
-  mape_stores.columns =['Store name', 'MAPE']
+def mape_stores(data, pred, breakdown:str):
+  sum_ = pd.DataFrame({
+    'Store name': data.reset_index()["store_name"],
+    "Product category": data.reset_index()["item_category"],
+    'Observed': data.reset_index()["total_amount"],
+    'Predicted': pred.reset_index(drop = True)
+    })
+  
+  sum_['mape'] = abs((sum_['Observed'] - sum_['Predicted'])/sum_['Observed'])*100
+  
+  if breakdown == "stores":
+    mape_stores = sum_.groupby('Store name')['mape'].mean().reset_index()
+    mape_stores.columns = ['Store name', 'MAPE']
+
+  elif breakdown == "stores_products":
+    mape_stores = sum_.groupby(['Store name',"Product category"])['mape'].mean().reset_index()
+    mape_stores.columns = ['Store name', "Product Category", 'MAPE']
+
   return mape_stores
 
 
@@ -122,21 +132,20 @@ def mape_stores(data, pred):
 # ytrainpred / ytestpred
 # list of store names or the word all (without quotation marks) for every store in the dataset
 
-def diff_overview(data,pred,stores):
+def diff_overview(data,pred):
   scaler = StandardScaler()
 
-  sum_ =pd.DataFrame({
-    'Store name': data["store_name"],
-    "Product category": data["item_category"],
-    'Date': data["date"],
-    'Observed': data["total_amount"],
-    'Predicted': pred,
-    'Difference': (pred - data['total_amount'])})
+  sum_ = pd.DataFrame({
+    'Store name': data.reset_index()["store_name"],
+    "Product category": data.reset_index()["item_category"],
+    'Date': data.reset_index()["date"],
+    'Observed': data.reset_index()["total_amount"],
+    'Predicted': pred.reset_index(drop = True),
+    'Difference': (pred.reset_index(drop = True) - data.reset_index()['total_amount'])
+    })
   sum_["Stand_resid"] = scaler.fit_transform(np.array(sum_["Difference"]).reshape(-1,1))
-  if stores ==all:
-    return sum_
-  else:
-    return sum_[sum_['Store name'].isin(stores)]
+
+  return sum_
 
 
 # fit statistics for train and test data
@@ -189,6 +198,7 @@ def pred_test(train,test,model):
     for date in date_range:
 
         x = test[(test.store_name == store) & (test.item_category == category) & (test.index.get_level_values("date") == date)]
+        
         x.loc[:, "total_amount_lag_1"] = lag_value
         x.loc[:, "total_amount_lag_2"] = lag_value2
         x.loc[:, "total_amount_lag_3"] = lag_value3

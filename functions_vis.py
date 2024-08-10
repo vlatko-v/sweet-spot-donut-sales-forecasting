@@ -527,6 +527,56 @@ def vis_weekend(df):
 
 
 
+#### Predictions ####
+
+# Residual plot
+
+def residual_plot(df):
+
+    df = df.copy()
+    
+    fig, ax = plt.subplots(1, 2, figsize = (15,6))
+
+    # No daily sales
+
+    sns.scatterplot(data = df[df["Product category"] != "daily total"], 
+                    x = "Predicted", y = "Stand_resid", 
+                    hue = "Product category", ax = ax[0])
+
+    ax[0].axhline(y=0, color='r', linestyle='--')
+    ax[0].set_xlabel("Predicted Sales (Daily total)")
+    ax[0].set_ylabel("Standardized Residuals")
+    ax[0].set_title("Residual Plot (Excluding Total Daily Sales)")
+
+
+    # Only daily sales
+
+    custom_labels = {
+        "Altona": "Store 1",
+        "Danziger": "Store 2",
+        "Jungfernstieg": "Store 3",
+        "Maybachufer": "Store 4",
+        "Mitte": "Store 4",
+        "Neuer Kamp": "Store 6",
+        "Potsdamer": "Store 7",
+        "Warschauer": "Store 8"
+    }
+
+    df["Store name"] = df["Store name"].map(custom_labels)
+
+    sns.scatterplot(data = df[df["Product category"] == "daily total"], 
+                    x = "Predicted", y = "Stand_resid", 
+                    hue = "Store name", ax = ax[1])
+
+    ax[1].axhline(y=0, color='r', linestyle='--')
+    ax[1].set_xlabel("Predicted Sales (Daily total)")
+    ax[1].set_ylabel("Standardized Residuals")
+    ax[1].set_title("Residual Plot (Only Total Daily Sales)")
+
+    plt.show()
+
+
+
 # Final timeseries prediction
 
 def ts_predicted (df):
