@@ -58,8 +58,8 @@ from sktime.transformations.series.summarize import WindowSummarizer
 ```
 
 ```{python}
-%run functions_model.py
-%run functions_vis.py
+%run Function_scripts/functions_model.py
+%run Function_scripts/functions_vis.py
 ```
 
 ```{python}
@@ -143,6 +143,18 @@ d_test2["hol_school"] = d_test2["hol_school"].apply(np.int64)
 d_test2 = d_test2.set_index(["store_name","item_category","date"]).sort_index()
 ```
 
+
+#### Creating window variables
+
+**Window variables** are essential in modelling sales forecasts. They tend to capture the effect of past sales on current sales very well. Window variables include sales from the previous days (so called *lagged variables*) as well as *moving averages* and *moving standard deviation* of sales over a specified past time period. 
+
+After other exogenous varaibles, such as holidays or weather, are taken into account as predictors of sales, what usually remains are residuals that sometimes exert a pattern. Because this pattern was not captured by exogenous variables, windowed variables are often able to systematically explain a lot of the remaining noise extremely well. Including window variables as predictors should therefore significantly improve the model's predictions.
+
+The following window variables are included as additional predictive features.
+* Lagged variables (sales from 1, 2 and 3 days ago) 
+* Moving averages (average sales over the past 7, 15 and 30 days)
+* Moving standard deviation (standard deviation over the past 4 days)
+
 ```{python}
 kwargs = {"lag_feature": {
     "lag":[1,2,3],
@@ -161,6 +173,7 @@ d2wind = transformer.fit_transform(d2)
 ```{python}
 d2wind = pd.concat([d2["total_amount"], d2wind], axis = 1).dropna()
 ```
+
 
 ### Creating validation dataset
 A validation set, containing the last 7 days of the entire training dataset, is created. The validation set is used for evaluation purposes and early stopping in the CatBoost model.

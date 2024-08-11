@@ -29,8 +29,8 @@ import seaborn as sns
 ```
 
 ```{python}
-%run functions_vis.py
-%run functions_EDA.py
+%run Function_scripts/functions_vis.py
+%run Function_scripts/functions_EDA.py
 ```
 
 ```{python}
