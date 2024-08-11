@@ -19,6 +19,21 @@ import scipy.stats as ss
 
 def ts_lineplot (df):
 
+    df = df.copy()
+    
+    custom_labels = {
+        "Altona": "Store 1",
+        "Danziger": "Store 2",
+        "Jungfernstieg": "Store 3",
+        "Maybachufer": "Store 4",
+        "Mitte": "Store 5",
+        "Neuer Kamp": "Store 6",
+        "Potsdamer": "Store 7",
+        "Warschauer": "Store 8"
+    }
+
+    df["store_name"] = df["store_name"].map(custom_labels)
+
     df["year_month"] = pd.to_datetime(df['year'].astype(str) + '-'+ df['month'].astype(str), format= '%Y-%m')
     df = df.dropna().set_index("date")
 
@@ -83,6 +98,22 @@ def ts_lineplot_stacked (df):
 
 
 def vis_total_amount_hist (df):
+
+    df = df.copy()
+    
+    custom_labels = {
+        "Altona": "Store 1",
+        "Danziger": "Store 2",
+        "Jungfernstieg": "Store 3",
+        "Maybachufer": "Store 4",
+        "Mitte": "Store 5",
+        "Neuer Kamp": "Store 6",
+        "Potsdamer": "Store 7",
+        "Warschauer": "Store 8"
+    }
+
+    df["store_name"] = df["store_name"].map(custom_labels)
+
     fig, axes = plt.subplots(4, 3, figsize = (15,20), sharey=False)
     axes = axes.flatten()
     df = df[df["item_category"] == "daily total"]
@@ -112,6 +143,22 @@ def vis_total_amount_hist (df):
 ## Rainfall
 
 def vis_rain (df):
+
+    df = df.copy()
+    
+    custom_labels = {
+        "Altona": "Store 1",
+        "Danziger": "Store 2",
+        "Jungfernstieg": "Store 3",
+        "Maybachufer": "Store 4",
+        "Mitte": "Store 5",
+        "Neuer Kamp": "Store 6",
+        "Potsdamer": "Store 7",
+        "Warschauer": "Store 8"
+    }
+
+    df["store_name"] = df["store_name"].map(custom_labels)
+
     fig, axes = plt.subplots(4, 3, figsize = (15,20), sharey=True)
     axes = axes.flatten()
     df = df[df["item_category"] == "daily total"]
@@ -137,6 +184,22 @@ def vis_rain (df):
 
 
 def vis_rain_bin (df):
+
+    df = df.copy()
+    
+    custom_labels = {
+        "Altona": "Store 1",
+        "Danziger": "Store 2",
+        "Jungfernstieg": "Store 3",
+        "Maybachufer": "Store 4",
+        "Mitte": "Store 5",
+        "Neuer Kamp": "Store 6",
+        "Potsdamer": "Store 7",
+        "Warschauer": "Store 8"
+    }
+
+    df["store_name"] = df["store_name"].map(custom_labels)
+
     fig, axes = plt.subplots(4, 3, figsize = (15,20), sharey=True)
     axes = axes.flatten()
 
@@ -170,6 +233,22 @@ def vis_rain_bin (df):
 # # Visualisation of rainfall and sales over months 
 
 def rainfall_month_sales (df):
+
+    df = df.copy()
+    
+    custom_labels = {
+        "Altona": "Store 1",
+        "Danziger": "Store 2",
+        "Jungfernstieg": "Store 3",
+        "Maybachufer": "Store 4",
+        "Mitte": "Store 5",
+        "Neuer Kamp": "Store 6",
+        "Potsdamer": "Store 7",
+        "Warschauer": "Store 8"
+    }
+
+    df["store_name"] = df["store_name"].map(custom_labels)
+
     fig, axes1 = plt.subplots(4,2, figsize = (12,15), sharey = True)
     axes1 = axes1.flatten()
 
@@ -207,6 +286,22 @@ def rainfall_month_sales (df):
 ## Sunshine duration
 
 def vis_sunshine (df):
+
+    df = df.copy()
+    
+    custom_labels = {
+        "Altona": "Store 1",
+        "Danziger": "Store 2",
+        "Jungfernstieg": "Store 3",
+        "Maybachufer": "Store 4",
+        "Mitte": "Store 5",
+        "Neuer Kamp": "Store 6",
+        "Potsdamer": "Store 7",
+        "Warschauer": "Store 8"
+    }
+
+    df["store_name"] = df["store_name"].map(custom_labels)
+
     fig, axes = plt.subplots(4, 3, figsize = (15,20), sharey=True)
     axes = axes.flatten()
     df = df[df["item_category"] == "daily total"]
@@ -231,6 +326,22 @@ def vis_sunshine (df):
 
 
 def vis_sunshine_bin (df):
+    
+    df = df.copy()
+    
+    custom_labels = {
+        "Altona": "Store 1",
+        "Danziger": "Store 2",
+        "Jungfernstieg": "Store 3",
+        "Maybachufer": "Store 4",
+        "Mitte": "Store 5",
+        "Neuer Kamp": "Store 6",
+        "Potsdamer": "Store 7",
+        "Warschauer": "Store 8"
+    }
+
+    df["store_name"] = df["store_name"].map(custom_labels)
+
     fig, axes = plt.subplots(4, 3, figsize = (15,20), sharey=True)
     axes = axes.flatten()
 
@@ -263,6 +374,22 @@ def vis_sunshine_bin (df):
 ## Temperature 
 
 def vis_temp (df):
+
+    df = df.copy()
+    
+    custom_labels = {
+        "Altona": "Store 1",
+        "Danziger": "Store 2",
+        "Jungfernstieg": "Store 3",
+        "Maybachufer": "Store 4",
+        "Mitte": "Store 5",
+        "Neuer Kamp": "Store 6",
+        "Potsdamer": "Store 7",
+        "Warschauer": "Store 8"
+    }
+
+    df["store_name"] = df["store_name"].map(custom_labels)
+
     fig, axes = plt.subplots(4, 3, figsize = (15,20), sharey=True)
     axes = axes.flatten()
     df = df[df["item_category"] == "daily total"]
@@ -288,6 +415,22 @@ def vis_temp (df):
 
 
 def vis_temp_bin (df):
+
+    df = df.copy()
+    
+    custom_labels = {
+        "Altona": "Store 1",
+        "Danziger": "Store 2",
+        "Jungfernstieg": "Store 3",
+        "Maybachufer": "Store 4",
+        "Mitte": "Store 5",
+        "Neuer Kamp": "Store 6",
+        "Potsdamer": "Store 7",
+        "Warschauer": "Store 8"
+    }
+
+    df["store_name"] = df["store_name"].map(custom_labels)
+
     fig, axes = plt.subplots(4, 3, figsize = (15,20), sharey=True)
     axes = axes.flatten()
 
@@ -321,6 +464,22 @@ def vis_temp_bin (df):
 
 
 def temp_month_sales (df):
+
+    df = df.copy()
+    
+    custom_labels = {
+        "Altona": "Store 1",
+        "Danziger": "Store 2",
+        "Jungfernstieg": "Store 3",
+        "Maybachufer": "Store 4",
+        "Mitte": "Store 5",
+        "Neuer Kamp": "Store 6",
+        "Potsdamer": "Store 7",
+        "Warschauer": "Store 8"
+    }
+
+    df["store_name"] = df["store_name"].map(custom_labels)
+
     fig, axes1 = plt.subplots(4,2, figsize = (12,15), sharey = True)
     axes1 = axes1.flatten()
 
@@ -356,6 +515,23 @@ def temp_month_sales (df):
 # Visualisation of holidays and total amount sold
 
 def vis_pub_hol(df):
+
+    df = df.copy()
+    
+    custom_labels = {
+        "Altona": "Store 1",
+        "Danziger": "Store 2",
+        "Jungfernstieg": "Store 3",
+        "Maybachufer": "Store 4",
+        "Mitte": "Store 5",
+        "Neuer Kamp": "Store 6",
+        "Potsdamer": "Store 7",
+        "Warschauer": "Store 8"
+    }
+
+    df["store_name"] = df["store_name"].map(custom_labels)
+
+
     fig, axes = plt.subplots(4, 3, figsize = (15,15), sharey=False)
     axes = axes.flatten()
     df = df[df["item_category"] == "daily total"]
@@ -380,6 +556,22 @@ def vis_pub_hol(df):
 
 
 def vis_school_hol(df):
+
+    df = df.copy()
+    
+    custom_labels = {
+        "Altona": "Store 1",
+        "Danziger": "Store 2",
+        "Jungfernstieg": "Store 3",
+        "Maybachufer": "Store 4",
+        "Mitte": "Store 5",
+        "Neuer Kamp": "Store 6",
+        "Potsdamer": "Store 7",
+        "Warschauer": "Store 8"
+    }
+
+    df["store_name"] = df["store_name"].map(custom_labels)
+
     fig, axes = plt.subplots(4, 3, figsize = (15,15), sharey=False)
     axes = axes.flatten()
     df = df[df["item_category"] == "daily total"]
@@ -409,6 +601,22 @@ def vis_school_hol(df):
 # Visualisation of public spaces
 
 def vis_pub_spaces(df):
+
+    df = df.copy()
+    
+    custom_labels = {
+        "Altona": "Store 1",
+        "Danziger": "Store 2",
+        "Jungfernstieg": "Store 3",
+        "Maybachufer": "Store 4",
+        "Mitte": "Store 5",
+        "Neuer Kamp": "Store 6",
+        "Potsdamer": "Store 7",
+        "Warschauer": "Store 8"
+    }
+
+    df["store_name"] = df["store_name"].map(custom_labels)
+
     fig, axes = plt.subplots(3, 3, figsize = (15,15), sharey=False)
     axes = axes.flatten()
     df = df[(df["item_category"] == "daily total") & 
@@ -441,6 +649,22 @@ def vis_pub_spaces(df):
 ### Week of year
 
 def vis_weeks(df):
+
+    df = df.copy()
+    
+    custom_labels = {
+        "Altona": "Store 1",
+        "Danziger": "Store 2",
+        "Jungfernstieg": "Store 3",
+        "Maybachufer": "Store 4",
+        "Mitte": "Store 5",
+        "Neuer Kamp": "Store 6",
+        "Potsdamer": "Store 7",
+        "Warschauer": "Store 8"
+    }
+
+    df["store_name"] = df["store_name"].map(custom_labels)
+
     fig, axes = plt.subplots(4, 3, figsize = (10,15), sharey=True)
     axes = axes.flatten()
     df = df[df["item_category"] == "daily total"]
@@ -478,6 +702,22 @@ def vis_weeks(df):
 ### Weekday
 
 def vis_weekday(df):
+
+    df = df.copy()
+    
+    custom_labels = {
+        "Altona": "Store 1",
+        "Danziger": "Store 2",
+        "Jungfernstieg": "Store 3",
+        "Maybachufer": "Store 4",
+        "Mitte": "Store 5",
+        "Neuer Kamp": "Store 6",
+        "Potsdamer": "Store 7",
+        "Warschauer": "Store 8"
+    }
+
+    df["store_name"] = df["store_name"].map(custom_labels)
+
     fig, axes = plt.subplots(4, 3, figsize = (10, 15), sharey=True)
     axes = axes.flatten()
     df = df[df["item_category"] == "daily total"]
@@ -504,6 +744,22 @@ def vis_weekday(df):
 ### Weekend
 
 def vis_weekend(df):
+
+    df = df.copy()
+    
+    custom_labels = {
+        "Altona": "Store 1",
+        "Danziger": "Store 2",
+        "Jungfernstieg": "Store 3",
+        "Maybachufer": "Store 4",
+        "Mitte": "Store 5",
+        "Neuer Kamp": "Store 6",
+        "Potsdamer": "Store 7",
+        "Warschauer": "Store 8"
+    }
+
+    df["store_name"] = df["store_name"].map(custom_labels)
+
     fig, axes = plt.subplots(4, 3, figsize = (10,15), sharey=False)
     axes = axes.flatten()
     df = df[df["item_category"] == "daily total"]
@@ -556,7 +812,7 @@ def residual_plot(df):
         "Danziger": "Store 2",
         "Jungfernstieg": "Store 3",
         "Maybachufer": "Store 4",
-        "Mitte": "Store 4",
+        "Mitte": "Store 5",
         "Neuer Kamp": "Store 6",
         "Potsdamer": "Store 7",
         "Warschauer": "Store 8"
@@ -579,28 +835,46 @@ def residual_plot(df):
 
 # Final timeseries prediction
 
-def ts_predicted (df):
-    fig, axes = plt.subplots(4,2, figsize = (15,18))
+def ts_predicted (df, item):
+    df = df.copy()
+    
+    custom_labels = {
+        "Altona": "Store 1",
+        "Danziger": "Store 2",
+        "Jungfernstieg": "Store 3",
+        "Maybachufer": "Store 4",
+        "Mitte": "Store 5",
+        "Neuer Kamp": "Store 6",
+        "Potsdamer": "Store 7",
+        "Warschauer": "Store 8"
+    }
+
+    df["store_name"] = df["store_name"].map(custom_labels)
+
+    fig, axes = plt.subplots(4,2, figsize = (15,12))
     axes = axes.flatten()
 
     for i, store in enumerate(df["store_name"].unique()):
-        store_df = df[(df["store_name"] == store)]
+        store_df = df[(df["store_name"] == store) & (df["item_category"] == item)]
+
         cutoff_date = pd.to_datetime("2024-05-25")
 
-        sns.lineplot(data = store_df, x = "date", y = "total_amount", ax = axes[i], errorbar = ("ci", False), marker = "o", markersize = 10,linewidth = 4, label = "Observed")
+        sns.lineplot(data = store_df, x = "date", y = "total_amount",
+                     errorbar = ("ci", False), marker = "o", markersize = 5, linewidth = 2, label = "Observed", ax = axes[i])
 
-        sns.lineplot(data = store_df[store_df["date"] >= cutoff_date], x = "date", y = "Predicted", errorbar = ("ci", False), label = "Predicted", marker = "o", markersize = 10, linewidth = 4, ax = axes[i])
+        sns.lineplot(data = store_df[store_df["date"] >= cutoff_date], x = "date", y = "Predicted",
+                     errorbar = ("ci", False), label = "Predicted", marker = "o", markersize = 5, linewidth = 3, ax = axes[i])
 
-        axes[i].axvline(x = cutoff_date, color='black', linestyle='--', linewidth = 3)
+        axes[i].axvline(x = cutoff_date, color='black', linestyle='--', linewidth = 2)
 
-        axes[i].set_title(store, size = 24)
+        axes[i].set_title(f"{store} ({item})", size = 15)
         axes[i].set_xlabel("")
-        axes[i].set_ylabel("Amount Sold", size = 18)
+        axes[i].set_ylabel("Amount Sold", size = 12)
         axes[i].xaxis.set_major_formatter(md.DateFormatter('%m-%d'))
-        axes[i].tick_params(axis='y', labelsize=16)
-        axes[i].tick_params(axis='x', labelsize=16, rotation=45)
+        axes[i].tick_params(axis='y', labelsize=12)
+        axes[i].tick_params(axis='x', labelsize=12, rotation=45)
 
-        axes[i].legend(fontsize = 16, loc = "upper right")
+        axes[i].legend(fontsize = 12, loc = "upper left")
 
     for j in range(i + 1, len(axes)):
         fig.delaxes(axes[j])

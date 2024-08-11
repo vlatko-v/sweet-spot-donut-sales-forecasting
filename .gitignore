@@ -170,6 +170,7 @@ timeseries.qmd
 
 # catboost output
 catboost_info
+saved_models
 
 # sktime test
 sktime_cv_tuning.ipynb
