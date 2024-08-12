@@ -1,0 +1,270 @@
+---
+title: Linear Regression Modelling
+jupyter: python3
+---
+
+
+The linear regression model is a comparatively simple, yet sophisticated algorithm that can be used for predicting continuous target variables. Because it is not as powerful as the other two models used in the project, the linear regression will serve as a baseline model against which the other two models' results will be compared.
+
+The following evaluation metrics are used to assess the model's performance:
+
+* R-squared
+* Mean Absolute Percentage Error (MAPE)
+
+The reasoning behind their selection is described in the notebook with the CatBoost model.
+
+
+```{python}
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import OneHotEncoder, RobustScaler, FunctionTransformer, PolynomialFeatures, StandardScaler
+from sklearn.model_selection import cross_validate
+from sklearn.compose import ColumnTransformer, TransformedTargetRegressor
+from sklearn.pipeline import Pipeline, make_pipeline
+from sklearn.linear_model import LinearRegression, Ridge, Lasso
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import r2_score
+from sklearn.metrics import mean_absolute_percentage_error
+
+from sktime.transformations.series.summarize import WindowSummarizer
+```
+
+```{python}
+%run Function_scripts/functions_model.py
+%run Function_scripts/functions_vis.py
+```
+
+```{python}
+pd.set_option("display.max_columns", None)
+```
+
+### Loading the dataset
+
+```{python}
+d = pd.read_csv("data/train_df.csv", parse_dates=[0])
+d_test = pd.read_csv("data/test_df.csv", parse_dates = [0])
+```
+
+```{python}
+d['date'] = pd.to_datetime(d['date'])
+d_test['date'] = pd.to_datetime(d_test['date'])
+```
+
+## Modelling 
+#### Selecting and defining features 
+
+The following features were selected to be included in the baseline model:
+
+* Item Category
+* Store
+* Weather 
+    * Temperature
+    * Precipitation
+    * Sunshine duration
+* Time variables:
+    * Timestep (number of days since the first recorded sale)
+    * Day of the year
+    * Weekday
+    * Week of the year 
+    * Month
+    * Year
+* Window variables
+    * Lagged features
+    * Rolling averages
+    * Rolling standard deviation
+* Special events 
+    * New Year's Eve
+    * Halloween
+    * Valentine's Day
+* Public Space dummy variable
+* Public holidays
+* Street market dummy variable
+
+</br>
+
+ Because the variable "school holidays" does not seem to significantly impact sales  (see p-values in the Visualisation notebook), it was not included as a predictor. All the other variables are likely to influence sales to a certain degree. For more information, please refer to the Visualisation notebook.
+
+```{python}
+date = ["date"]
+
+numfeat =["days_back","temperature_2m_mean","sunshine_duration","precipitation_hours"]
+
+catfeat = ["store_name","item_category", 'day', 'halloween', 'hol_pub', 'month', 'nye', 'public_space', 'street_market', 'valentines_day','week_year', 'weekday', 'year']
+```
+
+```{python}
+d2 = d[date + catfeat + numfeat + ["total_amount"]]
+d_test2 = d_test[date + catfeat + numfeat + ["total_amount"]]
+```
+
+```{python}
+agg_columns = d2.columns.difference(['date', 'store_name', 'item_category'] + ["total_amount"])
+agg_dict = {col: "first" for col in agg_columns}
+agg_dict["total_amount"] = "sum"
+
+d2 = d2.groupby(['date', 'store_name', 'item_category']).agg(agg_dict).reset_index().sort_values(by = "date", ascending = False).reset_index(drop = True)
+d2["hol_pub"] = d2["hol_pub"].apply(np.int64)
+
+d2 = d2.set_index(["store_name","item_category","date"]).sort_index()
+
+d_test2 = d_test2.groupby(['date', 'store_name', 'item_category']).agg(agg_dict).reset_index().sort_values(by = "date", ascending = False).reset_index(drop = True)
+d_test2["hol_pub"] = d_test2["hol_pub"].apply(np.int64)
+
+d_test2 = d_test2.set_index(["store_name","item_category","date"]).sort_index()
+```
+
+```{python}
+kwargs = {"lag_feature": {
+    "lag":[1,2,3],
+    "mean": [[1,7], [1, 15], [1,30]],
+    "std": [[1,4]]
+    },
+    "target_cols":["total_amount"]}
+
+transformer = WindowSummarizer(**kwargs, n_jobs= -1)
+```
+
+```{python}
+d2wind = transformer.fit_transform(d2)
+d2wind = pd.concat([d2["total_amount"], d2wind], axis = 1).dropna()
+```
+
+### Transforming features
+
+In order for the linear regression model to work properly, some additional feature preprocessing is necessary. This includes the following transformations of the variables:
+
+* Scaling numerical variables, including window variables
+* Adding polynomial features (i.e. squaring and interactions of numerical features, excluding window variables)
+* One-hot-encoding of categorical features
+* Log transforming the target variable
+
+```{python}
+num_tr =Pipeline(
+  steps=[
+    ("scaling", RobustScaler()),
+    ("polyint",PolynomialFeatures(3,include_bias=False))
+])
+```
+
+```{python}
+cat_tr =Pipeline(steps=[
+  ("ohe", OneHotEncoder(drop='first',sparse_output=False))
+])
+```
+
+```{python}
+wind_tr =Pipeline(
+    steps=[
+        ("log_transform", FunctionTransformer(func=np.log1p, inverse_func=np.expm1)),
+        ("scaling", RobustScaler())
+        ]
+)
+```
+
+```{python}
+prepro =ColumnTransformer(
+  transformers=[
+    ("num", num_tr, numfeat),
+    ("cat",cat_tr,catfeat),
+    ("wind_tr", wind_tr,['total_amount_lag_1', 'total_amount_lag_2',
+       'total_amount_lag_3', 'total_amount_mean_1_7', 'total_amount_mean_1_15',
+       'total_amount_mean_1_30', 'total_amount_std_1_4'])
+])
+```
+
+
+#### Log transformation of the target variable
+The histograms below show the distribution of total daily sales of one store, both as actual and log-transformed values. The log-transformed histogram looks more normally distributed.
+
+The target variable (donut sales) is therefore log transformed so the model can make more accurate predictions. During the prediction step, *sales* are forecasted in the log scale and then transformed back using exponentiation. 
+
+```{python}
+fig, ax = plt.subplots(1,2, figsize = (12,4))
+
+sns.histplot(data = train[(train["store_name"] == "Maybachufer") & (train["item_category"] == "daily total")]["total_amount"], ax = ax[0])
+ax[0].set_title("Daily sales")
+ax[0].set_xlabel("")
+
+sns.histplot(data = np.log1p(train[(train["store_name"] == "Maybachufer") & (train["item_category"] == "daily total")]["total_amount"]), ax = ax[1])
+ax[1].set_title("Daily sales (Log-transformed)")
+ax[1].set_xlabel("")
+```
+
+```{python}
+transf_y = Pipeline(
+    steps = [
+    ("log_transf", FunctionTransformer(func=np.log1p, inverse_func=np.expm1))
+    ]
+)
+```
+
+```{python}
+lr =Pipeline(
+  steps=[
+    ("prepro", prepro),
+    ("lr",LinearRegression())])
+```
+
+```{python}
+linear_model_transf = TransformedTargetRegressor(regressor= lr, transformer = transf_y)
+```
+
+### Model fit and prediction
+
+```{python}
+train = d2wind.sample(frac=1, random_state=21).iloc[d2wind.index.get_level_values("date") >= pd.to_datetime("2021-07-12")].reset_index().set_index("date")
+```
+
+```{python}
+xtrain = train.reset_index().drop("total_amount", axis = 1).set_index("date")
+ytrain = train.reset_index()[["date","total_amount"]].set_index("date")
+```
+
+```{python}
+linear_model_transf.fit(xtrain,ytrain)
+```
+
+```{python}
+ytrainpred = linear_model_transf.predict(xtrain)
+```
+
+
+### Evaluating model with test data<br>
+
+The first baseline predictions are made on the test dataset.
+
+```{python}
+train_final = d2wind.iloc[d2wind.index.get_level_values("date") >= pd.to_datetime("2021-07-12")].reset_index().set_index("date")
+
+xtest = d_test2.reset_index().set_index("date").drop("total_amount", axis = 1)
+ytest = d_test2.reset_index()[["date","total_amount"]].set_index("date")
+```
+
+```{python}
+xtest_final, ytestpred = pred_test(train = train_final, test = xtest, model = linear_model_transf)
+```
+
+### Fit statistics for train and test dataset
+
+```{python}
+fit_overview(ytrain, ytrainpred, ytest, ytestpred)
+```
+
+For a baseline model, the final test results of the linear regression are relatively good. The **R-squared value of 0.9** is quite high for the test dataset. The **Mean Absolute Percentage Error (MAPE) of 26%** means that the model's predictions are, on average, 26% over or under the actual sales. The results can be further broken down into MAPE scores at the store and product category level.
+
+```{python}
+mape_stores(d_test2, ytestpred, breakdown = "stores").sort_values("MAPE").reset_index(drop = True)
+```
+
+```{python}
+mape_stores(d_test2, ytestpred, breakdown = "stores_products").sort_values("MAPE").reset_index(drop = True)
+```
+
+While some stores and store-product combinations were predicted relatively well and their MAPE scores are low, other stores and products don't exhibit such good results. Still, for a baseline model, the forecasted sales are solid, but can certainly be improved upon. This is especially true for those store-product combinations with a MAPE of over 30%.
+
+Other models, especially tree-based methods, can be leveraged to improve upon the baseline model's predictions. This is further explored in the Random Forests and CatBoost notebooks.
+
+
+
