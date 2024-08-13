@@ -9,9 +9,6 @@ altair==5.0.1
 pmdarima==2.0.3
 pydot
 protobuf
-tensorflow==2.15
-tensorflow-hub
-tensorflow-docs
 holidays==0.50
 requests
 scipy==1.10.1
