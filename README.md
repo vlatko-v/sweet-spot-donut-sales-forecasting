@@ -18,7 +18,7 @@ In the EU alone, food waste accounts for ~16% of the F&B sector's CO2 emissions.
 * Examining relationshships between features (correlations, Anova) and selecting relevant variables
 * Feature Engineering - Transforming variables for time-series forecasting
 * Model Building - Linear regression (baseline), Random Forests and CatBoost
-* Evaluating training, validation and test metrics - R^2^, Root mean squared error, Mean Absolute Percentage Error
+* Evaluating training, validation and test metrics - R2, Root mean squared error, Mean Absolute Percentage Error
 
 
 ## Repository content
@@ -52,7 +52,7 @@ The dataset contains over 160,000 recorded transactions of donut sales. It is a 
 
 ### Data cleaning and feature engineering
 
-The dataset was augmented by transforming and adding new variables (covariates) that are believed to explain donut sales very well.
+The dataset was augmented by transforming and adding new variables (covariates) that should be good predictors of donut sales.
 
 * Converted the "date" variable to a datetime type
 * Clustered product items into 8 separate categories
@@ -122,7 +122,7 @@ After the data cleaning and feature transformation steps, the dataset contained 
 
 ## Exploratory Data Analysis (EDA)
 
-EDA was performed by way of analyzing histograms, boxplots and scatterplots in order to establish relationships between the target variable (sales) and the remaining explanatory (independent) variables. Associations between explanatory variables were examined in order to detect potential multicollinarities. 
+EDA was performed by way of analyzing histograms, boxplots and scatterplots in order to establish relationships between the target variable (sales) and the remaining explanatory (independent) variables. Associations between explanatory variables were also examined in order to detect potential multicollinarities. 
 
 Here are the highlights of the EDA:
 
@@ -146,7 +146,7 @@ Seasonal patterns can also be observed. During summer, donut sales tend to dip, 
 
 **3. Temperature and sales**
 
-<img src="Visuals/temp_sales.png" width="700">
+<img src="Visuals/temp_sales.png" width="800">
 
 Sales tend to decrease when temperatures are high (*red line*), especially during the month of June. They peak between 10-15°C and taper off when it gets too hot. 
 
@@ -182,13 +182,13 @@ Three models were built in total.
 
 #### Cross-validation and hyperparameter tuning
 
-The RF and Catboost models were trained using time-series cross-validation, akin to the split depicted in the graph below. The model was cross-validated on a dataset consisting of a period of 7 days. The process also involved tuning different sets of hyperparameters to find the combination that resulted in the least RMSE.
+The RF and Catboost models were trained using time-series cross-validation, akin to the split depicted in the graph below. The model was cross-validated on a dataset consisting of 7 days. The process also involved tuning different sets of hyperparameters to find the combination that resulted in the smallest RMSE.
 
 <img src="Visuals/tscv.png" width="750">
 
 </br>
 
-The model was ultimately tested on the test dataset that consisted of the final 7 days in May 2024 (May 25 - May 31).
+The model was ultimately tested on the test dataset consisting of the final 7 days in May 2024 (May 25 - May 31).
 
 </br>
 
@@ -196,7 +196,7 @@ The model was ultimately tested on the test dataset that consisted of the final 
 
 The model was evaluated based on **R-square** and **MAPE** scores.
 
-*R2* represents the proportion of the variance in the dependent variable that is predictable from the independent (explanatory) variables. For example, an R-squared of 0.8 means that 80% of the variance in the target variable is explained by the model. It is a measure of the model's general goodness of fit and is useful when comparing different models' performances.
+*R2* represents the proportion of the variance in the dependent variable that is predictable from the independent (explanatory) variables. For example, an R-squared of 0.8 means that 80% of the variance in the target variable is explained by the model. It is a measure of the model's general goodness of fit and is useful when comparing different model performances.
 
 *MAPE*, on the other hand, is an error metric. A MAPE of 5% means that, on average, the forecast is off by 5% from the actual value. MAPE penalizes both overestimations (i.e. overproduction leading to food waste) and underestimations (i.e. unfulfilled customer demand) equally. 
 
@@ -220,27 +220,27 @@ Catboost    | 0.96         | 17% |
 
 The models' MAPE was further calculated at the store and product level, including total daily sales. Results are shown for the best performing model (Catboost).
 
-<img src="Visuals/mape_stores_products.png" width="550">
+<img src="Visuals/mape_stores_products.png" width="650">
 
 </br>
 
-With a **MAPE of ~15%**, the model is able to **forecast donut sales of more than a half store-product combinations quite well**. These include products such as classic donuts, mixed boxes and monthly specials as well as total daily sales.
+With a **MAPE of ~15%**, the **sweetspot model is able to forecast donut sales of more than a half store-product combinations quite well**. These include products such as classic donuts, mixed boxes and monthly specials as well as total daily sales.
 
-Finally, the time-series line chart below visually depicts the Catboost model's predictions for total daily sales.
+Finally, the time-series line charts below visually depict the Catboost model's predictions for total daily sales.
 
 
-<img src="Visuals/linechart_predictions.png" width="400">
+<img src="Visuals/linechart_predictions.png" width="500">
 
 
 </br></br>
 
 For a more comprehensive dive into the analysis, please refer to the following notebooks 
 
-* Feature_engineering.ipynb
-* Visualization_EDA.ipynb
-* baseline_lm.ipynb
-* forests.ipynb
-* catboost.ipynb
+* *Feature_engineering.ipynb*
+* *Visualization_EDA.ipynb*
+* *baseline_lm.ipynb*
+* *forests.ipynb*
+* *catboost.ipynb*
 
 </br>
 
@@ -248,3 +248,4 @@ For a more comprehensive dive into the analysis, please refer to the following n
 
 The Catboost-based sweetspot model has shown great potential to accurately forcast sales of a German donut manufacturer.
 
+However, in order to make this a viable product, the sweetspot model will have to make forecasts on a continuous stream of data for more than just a week.
