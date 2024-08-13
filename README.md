@@ -1,4 +1,4 @@
-# SweetSpot - A Time-Series Forecasting Model for Reducing Food Waste
+# sweetspot - A Time-Series Forecasting Model for Reducing Food Waste
 
 <img src="Visuals/sweetspot_logo.png" width="230">
 
