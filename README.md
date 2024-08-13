@@ -234,7 +234,7 @@ Finally, the time-series line charts below visually depict the Catboost model's 
 
 </br></br>
 
-For a more comprehensive dive into the analysis, please refer to the following notebooks 
+For a more comprehensive overview of the analysis, please refer to the following notebooks 
 
 * *Feature_engineering.ipynb*
 * *Visualization_EDA.ipynb*
