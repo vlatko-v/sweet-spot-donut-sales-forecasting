@@ -128,7 +128,7 @@ Here are the highlights of the EDA:
 
 **1. Histogram**
 
-<img src="Visuals/histograms.png" width="650">
+<img src="Visuals/histograms.png" width="750">
 
 The histograms show that *daily sales* are not normally distributed. While not problematic for predictions based on tree-based algorithms, the target variable needed to be log-transformed for the linear regression model. Moreover, with each passing year, the number of daily sales has, on average, increased.
 
