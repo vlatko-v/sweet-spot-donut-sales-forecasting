@@ -213,6 +213,17 @@ The model was evaluated based on **R-square** and **MAPE** scores.
 
 </br>
 
+### Feature importances
+
+<img src="Visuals/feature_importances.png" width="750">
+
+The most important features that explain sales are mainly related to temporal variables. Most notably, the model confirms the original assumption different weekdays - especially weekend days - are good predictors of sales. Window variables, especially moving averages and lag features, also explain sales trends well.
+
+Important exogenous features are, expectedly, the item categories and individual stores. Other exogenous variables, such as New Year's Eve and weather features, also play a noticable role in forecasting sales well. 
+
+</br>
+
+
 ## Model performance
 
 The three models were evaluated on the overall R2 and MAPE. These are the results.
@@ -220,12 +231,12 @@ The three models were evaluated on the overall R2 and MAPE. These are the result
 | Model | R2 | MAPE | 
 |-----------|------------------------|----------|
 Linear regression (Baseline)    | 0.90        | 26% |
-Random Forests    | ???         | ??? |
+Random Forests    | 0.94         | 22% |
 Catboost    | 0.96         | 17% |
 
 </br>
 
-**The Catboost model did the best job at forecasting sales.**
+**The Catboost model did the best job at forecasting donut sales.**
 
 </br>
 
