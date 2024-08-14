@@ -1,5 +1,5 @@
 ---
-title: Linear Regression Modelling
+title: Linear Regression Model
 jupyter: python3
 ---
 

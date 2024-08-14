@@ -31,9 +31,19 @@ school_h_be = pd.read_csv("data/hol_school_b.csv")
 school_h_hh = pd.read_csv("data/hol_school_h.csv")
 ```
 
+
+```{python}
+d.info()
+```
+
+```{python}
+d.head(10)
+```
+
+
 ## Feature engineering
 
-The features in the dataset need to be transformed in some ways to make the analysis more coherent and the sales forecasting more precise. 
+The features in the dataset need to be transformed in some way to make the analysis more coherent and the sales forecasting more precise. 
 
 For example, the dataset contains information on total sales of several hundred different products. These products were clustered into several different categories to make the analysis easier. Additional features, such as the occurence of public or school holidays, were added as well
 
@@ -167,7 +177,7 @@ updated_d = hol_pub(updated_d)
 updated_d = hol_school(updated_d, school_h_be, school_h_hh)
 ```
 
-#### Adding date info
+#### Adding time information
 
 The function below add the following time variables:
 

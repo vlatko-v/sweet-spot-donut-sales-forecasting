@@ -6,7 +6,6 @@ jupyter: python3
 
 In this notebook, the data is explored visually and analytically. In a series of histograms, boxplots and scatterplots, the relationships between the different variables - primarily the target variable (sales) and the remaining explanatory (independent) variables - are examined. 
 
-
 The main reason for establishing relationships between sales and the independent variables is to ensure that the latter have a potential influence on sales. For instance, weekend days might have a higher impact on sales than regular workdays. If that is the case, then including that variable in the forecasting model will make for better predictions. 
 
 Furthermore, examining explanatory variables amongst themselves might reveal multicollinearities. This is especially problematic for regression models because the model won't  know to which variable it should attribute the effect on sales. The result is most likely an inaccurate prediction.
@@ -17,6 +16,7 @@ The relationships between variables are ultimately tested via:
 
 * ANOVA tests (p-value) for continuous (target) and categorical (explanatory) variables
 * Pearson Correlations when both variables are continuous
+
 
 ## Loading libraries and data
 
@@ -50,6 +50,28 @@ d = d.sort_values(["store_name","item_category","date"])
 ```{python}
 d['date'] = pd.to_datetime(d['date'])
 ```
+
+
+## Overview
+
+```{python}
+d.columns
+```
+
+```{python}
+d.info()
+```
+
+The dataset contains no missing values. 
+
+There are 5 categorical variables (excluding the binned weather variables) and multiple integer variables. Most of these integer variables are dummy variables, effectively representing categories. The only exception are the public and school holidays, which need to be converted to an *int* type, as they are also dummy variables. 
+
+The only truly numerical features are the different weather and the timestep (days_back) variables.
+
+```{python}
+d.head()
+```
+
 
 ## Visualizations
 

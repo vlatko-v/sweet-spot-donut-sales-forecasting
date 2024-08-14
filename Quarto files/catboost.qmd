@@ -1,14 +1,14 @@
 ---
-title: Catboost Modelling
+title: Catboost Model
 jupyter: python3
 ---
 
 
-In this notebook, a final sales forecasting model based on the CatBoost algorithm is created. More information can be found here: https://catboost.ai/
+In this notebook, a final sales forecasting model based on the CatBoost algorithm is built. More information can be found here: https://catboost.ai/
 
-Just as the Random Forest model, the final model is also a tree-based model. These types of algorithms lend themselves well to predicting target features that are not normally distributed, as is the case with sales here. Moreover, CatBoost is specifically tailored to datasets with many categorical variables. With the expception of weather and lag variables, this dataset mainly contains categorical features, including dummy variables.
+Just as the Random Forest model, the final model is also a tree-based model. These types of algorithms lend themselves well to predicting target features that are not normally distributed, as is the case with sales here. Moreover, CatBoost is specifically tailored to datasets with many categorical variables. With the expception of weather and lag variables, this dataset mainly contains categorical features, including dummy variables. Being a tree-based model, Catboost can handle non-linear patterns very well, which are likely to occur in sales data.
 
-Given the flexibility of CatBoost, no additional preprocessing is necessary. It can handle object (categorical) variables, missing values and responds well to non-normally distributed target variables.
+Given the flexibility of CatBoost, no additional preprocessing is necessary. It can handle object (categorical) variables, missing values and responds well to a non-normally distributed target variable and non-linear relationships between the predictors and the target variable.
 
 
 ```{python}
@@ -97,14 +97,21 @@ numfeat = ["days_back","temperature_2m_mean","sunshine_duration","precipitation_
 
 There are several metrics that can be used to evaluate the perfomance of a model. 
 
-* R2
+* R-Squared (R^2^)
 * Root Mean Squared Error (RMSE)
 * Mean Absolute Error (MAE)
 * Mean Absolute Percentage Error (MAPE)
 
-The objective of the project is to accurately forecast donut sales for the next several days in order to reduce food waste and excess resource use. Curbing food waste by a specified amount means counting the difference between produced and sold donuts and comparing those numbers to the upcoming period. This yield a difference that can be expressed in percentages.
+The RMSE will be used as a loss metric for model training. The model itself will be evaluated based on **R^2^ and MAPE** scores.
 
-In this use case, there is no information on how many and which types of donuts were produced daily.
+*R^2^* represents the proportion of the variance in the dependent variable that is predictable from the independent (explanatory) variables. For example, an R-squared of 0.8 means that 80% of the variance in the target variable is explained by the model. It is a basic metric that is useful when comparing the accuracy of different models.
+
+*MAPE*, on the other hand, is an error metric. Here are some benefits of using *MAPE*:
+
+* MAPE is expressed as a percentage, making it easy to interpret and understand. A MAPE of 5% means that, on average, the forecast is off by 5% from the actual value, which is intuitively meaningful for most stakeholders. 
+* MAPE also penalizes both overestimations and underestimations equally, which is important in the context of forecasting donut sales and curbing food waste. On the one hand, overestimations are harmful insofar as they may cause overproduction, leading to more resources being used than necessary. On the other hand, underestimations lead to underproduction and the store not being able to meet customer demand.
+* Finally, MAPE makes it easy to compare the accuracy of models across different datasets with varying scales and units.
+
 
 
 ### Hyperparameter Tuning with Cross-validation
@@ -201,9 +208,9 @@ The graph below depicts the time-series cross-validation process visually. The f
 
 ---
 
-When making time-series forecasting on a test dataset, predictions are often done recursively. This means that the model does not make predictions for all points in a forecasting horizon at once (7 days in this case), but does so day by day. The reason for that is that when window variables - such as lagged features or rolling averages of the target variable (donut sales) - are considered as explanatory variables, they won't actually exist in the test dataset. They are, in that case, calculated based on future target variable values which are yet to be predicted.
+When making time-series forecasting on a test dataset, predictions are often done recursively. This means that the model does not make predictions for all points in a forecasting horizon at once (7 days in this case), but does so day by day. The reason for that is that when window variables - such as lagged features or rolling averages of the target variable (donut sales) - are taken into account, they don't occur in the test dataset as explanatory variables. They are, in that case, calculated based on future target variable values which are yet to be predicted.
 
-This type of assessment will be performed on the testing dataset at the end of the notebook . However, the cross-validation process in this case would not only involve recursive predictions, but would also have to accommodate hierarchical data structures (i.e. one store per one product per one day).
+This type of assessment will be performed on the testing dataset at the end of the notebook . The cross-validation process in this case would not only involve recursive predictions, but would also have to accommodate hierarchical data structures (i.e. one store per one product per one day).
 
 In order to simplify this task, no recursive predictions will be carried out on either of the five validation folds at this point. While this won't yield the most optimal predictions, performing time-series cross-validation can still produce good evaluation results.
 
@@ -293,7 +300,6 @@ best_parameters = study.best_params
 del best_parameters["n_estimators"]
 ```
 
-
 ```{python}
 x_train = x_train.set_index("date")
 y_train = y_train.set_index("date")
@@ -329,6 +335,9 @@ model2.fit(x_train, y_train, eval_set=(x_val, y_val),
           cat_features = catfeat, verbose = 250, plot = True)
 ```
 
+
+**Saving the model**
+
 ```{python}
 model2.save_model("saved_models/cb_final_model.cbm")
 ```
@@ -343,11 +352,24 @@ model2.load_model("saved_models/cb_final_model.cbm")
 ```
 
 ```{python}
-#| colab: {base_uri: 'https://localhost:8080/', height: 652}
-model2.get_feature_importance(prettified=True).plot(x = "Feature Id", y = "Importances", kind = "bar")
+feat_importances = pd.DataFrame({
+    'Feature': x_train.columns,
+    'Importance': model2.get_feature_importance()
+}).sort_values("Importance", ascending = False).head(20)
 ```
 
-The most important features that explain sales are mainly related to temporal variables. Most notably, the model confirms the original assumption different weekedays - especially weekend days - impact sales differently.
+```{python}
+#| colab: {base_uri: 'https://localhost:8080/', height: 652}
+plt.figure(figsize=(10, 6))
+sns.barplot(x='Importance', y='Feature', data=feat_importances, palette='viridis')
+
+plt.title('Feature Importances from Catboost Regressor')
+plt.xlabel('Importance')
+plt.ylabel('Feature')
+plt.show()
+```
+
+The most important features that explain sales are mainly related to temporal variables. Most notably, the model confirms the original assumption different weekdays - especially weekend days - are good predictors of sales.
 
 Window variables, especially moving averages, also explain sales trends well. Interestingly, it is those window variables that are not captured by the overall seasonal pattern variables (e.g. months or years) that play major roles in accurately forecasting sales. These are specifically moving averages of the sales variable over the past 15 days as well as sales from the day before (lag 1 variable).
 
@@ -380,7 +402,7 @@ print(f"MAPE validation: {round(100*mean_absolute_percentage_error(y_val, y_val_
 ```
 
 
-# Test dataset
+## Test dataset
 
 ```{python}
 train_final = d2wind.iloc[d2wind.index.get_level_values("date") >= pd.to_datetime("2021-07-12")].reset_index().set_index("date")
@@ -389,46 +411,25 @@ x_test_final = d_test2.reset_index().set_index("date").drop("total_amount", axis
 y_test_final = d_test2.reset_index()[["date","total_amount"]].set_index("date")
 ```
 
-The prediction of sales was done recursively, meaning that every day's sales in the test dataset was done separately. Put differently, sales, lagged and window variables (e.g. rolling averages) were predicted only for the next day. Predictions were thereby used iteratively as inputs for window variables, which rely on the target variables predicted values. 
+The prediction of sales was done recursively, meaning that every day's sales forecasts in the test dataset were performed consecutively. Put differently, sales, lagged and window variables (e.g. rolling averages) were predicted only for the next day. Predictions were thereby used iteratively as inputs for window variables, which rely on the target variable's predicted values. 
 
-The final result of this are more accurate sales prediction in the test dataset.
+The final result of this iterative process are more accurate sales predictions in the test dataset.
 
 ```{python}
 x_test_final, y_test_pred = pred_test(train = train_final, test = x_test_final, model = model2)
 ```
 
-### Residual Plot Analysis
-
-The residual plot below shows the difference between the predicted and actual sales. Residuals were standardized with a mean 0.
-
-```{python}
-difference_df = diff_overview(data = d_test2, pred = y_test_pred)
-```
-
-```{python}
-residual_plot(difference_df)
-```
-
-The first plot shows residuals excluding daily total sales. The following observations can be made:
-
-* The residuals for the different product categories seem normally distributed, with most of them bein centered around the mean and within 1 standard deviation. 
-
-* The product category plot seems rather heteroskedastic. Most notably, the mixed category - which sells boxes of different types of donuts - and monthly specials have relatively high residual errors, at least compared to other categories. This means that there may be some patterns in the dataset that the model didn't capture well enough, but that could explain the sales trend. Another possibility is that some other variables - for example advertising or other special events - could better explain the sales of these two categories.
-
-* In the total daily sales plot, there are only a few points with low daily sales. These sales are from stores that opened recently. Apart from that, the plot looks more or less homoskedastic, meaning there are no clear patterns.
-
-
 ### Evaluation metrics train and test set
 
-The final evaluation metrics show the R2 and Mean Absolute Percentage Error (MAPE) both for the training and the test dataset. In addition, the MAPE is displayed for each store as well as at the product category level.
+The final evaluation metrics show the R^2^ and Mean Absolute Percentage Error (MAPE) both for the training and the test dataset. In addition, the MAPE is displayed for each store and at each product category level.
 
-With a **test MAPE of 17% and R2 of 0.96**, the model did a very good job at predicting sales for the next seven days.
+With a **test MAPE of 17% and R^2^ of 0.96**, the model did a very good job at predicting sales for the next seven days.
 
 ```{python}
 fit_overview(ytrain = y_train, ytrainpred = y_train_pred2, ytest = y_test_final, ytestpred = y_test_pred)
 ```
 
-Breaking the scores further down by stores and product categories, it can be seen the MAPE is even lower for some stores that have been open longer. This is true at both the store level as well as the individual store-product levels.
+Breaking the scores further down by stores and product categories, it can be seen the MAPE is even lower for some stores that have been open longer. This is true at both the store level and the individual store-product pairs.
 
 ```{python}
 # breakdown: either "stores" or "stores_products"
@@ -442,6 +443,28 @@ mape_stores(d_test2, y_test_pred, breakdown = "stores").sort_values("MAPE").rese
 mape_stores(d_test2, y_test_pred, breakdown = "stores_products").sort_values("MAPE").reset_index(drop = True)
 ```
 
+
+### Residual Plot Analysis
+
+The residual plot below shows the difference between the predicted and actual sales. Residuals were standardized with a mean 0.
+
+```{python}
+difference_df = diff_overview(data = d_test2, pred = y_test_pred)
+```
+
+```{python}
+residual_plot(difference_df)
+```
+
+The first plot shows residuals excluding total daily sales. The second plot shows residuals with reference only to daily sales. The following observations can be made:
+
+* In terms of the distribution of residuals, both plots look similar to those of the Random Forest model. The conclusions drawn from there therefore apply to the Catboost model as well.
+
+* The residuals for the different product categories seem normally distributed, with most of them being centered around the mean and within 1 standard deviation. 
+
+* The product category plot seems to be rather heteroskedastic. Most notably, the mixed category - which sells boxes of different types of donuts - and monthly specials have relatively high residual errors, at least compared to other categories. Considering that most sold donuts belonged to the *mixed* category, it is no surprise that the model had difficulties predicting relatively high values correctly. The error distribution reveals that there may be some patterns in the dataset that the model didn't capture well enough and that could explain the sales trend. Another possibility is that some other variables - for example advertising or other special events - serve as better predictors for sales for these two categories. Alternatively, reclassfying the *mixed* group may yield a more precise represenatation of distinct donut categories that could individually explain sales better than the larger category.
+
+* In the total daily sales plot, there are only a few points with low daily sales. These sales are from stores that opened recently. Apart from that, the plot looks more or less homoskedastic, meaning there are no clear patterns.
 
 ### Visualisation of predictions
 
@@ -467,8 +490,12 @@ ts_predicted(df_predicted, item = "daily total")
 
 The visualisation of the results in the form of time-series line plots confirms the accuracy of the model. Looking at the dates between May 1 and May 31 2024, high sales fluctuations are observable across all stores, whether it's daily total sales or the sales of, for instance, donuts from the "specials" category (graphs above). 
 
-Some patters are still recognizable, including the sales trends of the final 7 days. While not perfect for all stores, the model still captures the daily sales trends and forecasts very well all across the board. This is especially true for the first 2-3 days that the model is predicting.
+Despite these fluctuations, some patters are still recognizable, both after the cutoff date for the test set, as well as after. While not perfect for all stores, the model still captures the daily sales trends and forecasts very well all across the board. This is especially true for the first 2-3 days that the model is predicting for. Compared to the Random Forest model, the Catboost model does a better job capturing patterns and makes more accurate forecasts.
 
-All in all, with a MAPE of ~15%, the model is very good at forecasting sales of certain store-product combinations, most notably total daily sales, classic donuts, mixed boxes and monthly specials.
+All in all, with a **MAPE of ~15%**, the model is able to **forecast donut sales of more than a half store-product combinations quite well**. These include products such as classic donuts, mixed boxes and monthly specials as well as total daily sales. Ignoring the 3 stores that opened up most recently and that lack quality data, the model's three worst MAPE scores for remaining store-product pairs are 27%, 26% and 19%, respectively. While these predictions can and should be improved, they are certainly better than the Random Forest's worst MAPE scores (35%, 34% and 32%).
+
+**The clear winner is therefore the Catboost model, which boasts better R2 and MAPE scores, both at the aggregated level and the individual store-product levels.**
+
+</br>
 
 

@@ -1,0 +1,370 @@
+---
+title: Random Forest Model
+jupyter: python3
+---
+
+
+Random Forests are a powerful and versatile machine learning algorithm with several advantages. Especially in the context of sales forecasting, Random Forests can capture complex, non-linear relationships between features (such as marketing spend, seasonality, and historical sales) and the target variable (future sales) effectively.
+
+The benefit of using Random Forests is that predictions from multiple decision trees are aggregated, which helps reduce the risk of overfitting that can occur with single decision trees. This is particularly useful in sales forecasting where overfitting to historical data can lead to poor generalization to new data.
+
+The ease of use of Random Forests also comes from the fact that almost no additional data preprocessing is necessary. The only transformation needed is to one-hot encode categorical variables into dummy variables.
+
+
+```{python}
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import OneHotEncoder, RobustScaler, FunctionTransformer, PolynomialFeatures, StandardScaler
+from sklearn.model_selection import cross_validate, RandomizedSearchCV
+from sklearn.compose import ColumnTransformer, TransformedTargetRegressor
+from sklearn.pipeline import Pipeline, make_pipeline
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import r2_score
+
+from sktime.transformations.series.summarize import WindowSummarizer
+
+import pickle
+```
+
+```{python}
+#| colab: {base_uri: 'https://localhost:8080/'}
+#| collapsed: true
+# for google colab
+#!unrar x drive/MyDrive/sweet-spot-donut-sales-forecasting.rar
+```
+
+```{python}
+%run Function_scripts/functions_model.py
+%run Function_scripts/functions_vis.py
+```
+
+```{python}
+pd.set_option("display.max_columns", None)
+```
+
+### Loading the dataset
+
+```{python}
+d = pd.read_csv("data/train_df.csv", parse_dates=[0])
+d_test = pd.read_csv("data/test_df.csv", parse_dates = [0])
+```
+
+```{python}
+d['date'] = pd.to_datetime(d['date'])
+d_test['date'] = pd.to_datetime(d_test['date'])
+```
+
+## Modelling
+#### Selecting and defining features
+
+The following features were selected to be included in the baseline model:
+
+* Item Category
+* Store
+* Weather
+    * Temperature
+    * Precipitation
+    * Sunshine duration
+* Time variables:
+    * Timestep (number of days since the first recorded sale)
+    * Day of the year
+    * Weekday
+    * Week of the year
+    * Month
+    * Year
+* Window variables
+    * Lagged features
+    * Rolling averages
+    * Rolling standard deviation
+* Special events
+    * New Year's Eve
+    * Halloween
+    * Valentine's Day
+* Public Space dummy variable
+* Public holidays
+* School holidays
+* Street market dummy variable
+
+```{python}
+date = ["date"]
+
+numfeat =["days_back","temperature_2m_mean","sunshine_duration","precipitation_hours"]
+
+catfeat = ["store_name","item_category", 'day', 'halloween', 'hol_pub', "hol_school", 'month', 'nye', 'public_space', 'street_market', 'valentines_day','week_year', 'weekday', 'year']
+```
+
+```{python}
+d2 = d[date + catfeat + numfeat + ["total_amount"]]
+d_test2 = d_test[date + catfeat + numfeat + ["total_amount"]]
+```
+
+```{python}
+agg_columns = d2.columns.difference(['date', 'store_name', 'item_category'] + ["total_amount"])
+agg_dict = {col: "first" for col in agg_columns}
+agg_dict["total_amount"] = "sum"
+
+d2 = d2.groupby(['date', 'store_name', 'item_category']).agg(agg_dict).reset_index().sort_values(by = "date", ascending = False).reset_index(drop = True)
+d2["hol_pub"] = d2["hol_pub"].apply(np.int64)
+
+d2 = d2.set_index(["store_name","item_category","date"]).sort_index()
+
+d_test2 = d_test2.groupby(['date', 'store_name', 'item_category']).agg(agg_dict).reset_index().sort_values(by = "date", ascending = False).reset_index(drop = True)
+d_test2["hol_pub"] = d_test2["hol_pub"].apply(np.int64)
+
+d_test2 = d_test2.set_index(["store_name","item_category","date"]).sort_index()
+```
+
+```{python}
+kwargs = {"lag_feature": {
+    "lag":[1,2,3],
+    "mean": [[1,7], [1, 15], [1,30]],
+    "std": [[1,4]]
+    },
+    "target_cols":["total_amount"]}
+
+transformer = WindowSummarizer(**kwargs, n_jobs= -1)
+```
+
+```{python}
+d2wind = transformer.fit_transform(d2)
+d2wind = pd.concat([d2["total_amount"], d2wind], axis = 1).dropna()
+```
+
+### Transforming features
+
+In order for the algorithm to work properly, some additional feature preprocessing is necessary. For Random Forest methods, this only includes one-hot-encoding categorical features.
+
+```{python}
+cat_tr =Pipeline(steps=[
+  ("ohe", OneHotEncoder(drop='first',sparse_output=False))
+])
+```
+
+```{python}
+prepro =ColumnTransformer(
+  transformers=[
+    ("cat",cat_tr,catfeat)
+    ],
+    remainder ='passthrough'
+
+    )
+```
+
+```{python}
+#| colab: {base_uri: 'https://localhost:8080/'}
+seed = 21
+
+rf =Pipeline(
+  steps=[
+    ("prepro", prepro),
+    ("rf",RandomForestRegressor(random_state = seed, verbose = 1, split_criterion="poisson"))])
+```
+
+```{python}
+xtrain = d2wind.reset_index().drop("total_amount", axis = 1).set_index("date")
+ytrain = d2wind.reset_index()[["date","total_amount"]].set_index("date")
+```
+
+
+### Model fit and prediction
+
+**Time-series cross-validation**
+
+When performing k-fold cross-validation in a time-series context, the data musn't be shuffled as in a regular cross-validation scenario. Instead, a forecasting horizon has to be defined for each fold, which serves as the validation set. It always comes after the training set chronologically. Because predicting donut sales for more than one week in advance is a difficult endeavor and will most likely lead to imprecise results, the forecasting horizon for this problem was set to 7 days.
+
+For more information, please refer to the notebook with the Catboost model.
+
+```{python}
+tscv = create_train_validation_folds(xtrain.reset_index())
+```
+
+**Hyperparameter tuning**
+
+Given that the Random Forest algorithm is a tree-based method, there are several hyperparameters that can be tuned. For this task, the following hyperparameters were chosen:
+
+* Number of trees (estimators)
+* Tree depth
+* Maximum number of features to be used in each tree
+* Smallest number of data to be used in a leaf before a split is made
+* Smallest number of data to end up in a final node
+
+```{python}
+param={
+  "rf__max_depth":np.arange(5,50,1),
+  "rf__n_estimators":np.arange(50,500,10),
+  "rf__min_samples_split":np.arange(4,10,1),
+  "rf__min_samples_leaf":np.arange(2,10,1),
+  "rf__max_features": ["sqrt","log2"]
+  }
+
+rfh =RandomizedSearchCV(estimator= rf, param_distributions = param, refit = "neg_root_mean_squared_error", verbose = 1,
+      scoring = ["neg_root_mean_squared_error","r2",'neg_mean_absolute_percentage_error'], cv=tscv, n_jobs = -1, n_iter = 20)
+```
+
+```{python}
+#| colab: {base_uri: 'https://localhost:8080/', height: 462}
+rfh.fit(xtrain, ytrain)
+```
+
+```{python}
+#| colab: {base_uri: 'https://localhost:8080/', height: 1000}
+pd.DataFrame(rfh.cv_results_)
+```
+
+```{python}
+best_params = {'n_estimators': 380,
+ 'min_samples_split': 7,
+ 'min_samples_leaf': 2,
+ 'max_features': 'sqrt',
+ 'max_depth': 35}
+```
+
+```{python}
+seed = 21
+
+rf_best = Pipeline(
+  steps=[
+    ("prepro", prepro),
+    ("rf",RandomForestRegressor(**best_params, random_state = seed, verbose = 1, n_jobs = -1, criterion="poisson"))])
+```
+
+```{python}
+#| colab: {base_uri: 'https://localhost:8080/', height: 191}
+#rf_best = rfh.best_estimator_
+```
+
+```{python}
+rf_best.fit(xtrain, ytrain)
+```
+
+```{python}
+ytrainpred = rf_best.predict(xtrain)
+```
+
+**Saving the model**
+
+```{python}
+with open('saved_models/rf_best1.pkl', mode='wb') as file:
+  pickle.dump(rf_best,file)
+```
+
+
+### Feature importances
+
+```{python}
+feat_importances = pd.DataFrame({
+    'Feature': rf_best.named_steps['prepro'].get_feature_names_out(),
+    'Importance': rf_best.named_steps["rf"].feature_importances_
+}).sort_values("Importance", ascending = False).head(20)
+```
+
+```{python}
+plt.figure(figsize=(10, 6))
+sns.barplot(x='Importance', y='Feature', data=feat_importances, palette='viridis')
+
+plt.title('Feature Importances from Random Forest Regressor')
+plt.xlabel('Importance')
+plt.ylabel('Feature')
+plt.show()
+```
+
+The bar plot above shows the 20 most important features of the Random Forest model.
+
+The most important features are by far the window variables. As a matter of fact, all seven window variables have the biggest impact in forecasting sales. Apart from that, the weekday variables - most notably Saturday and Sunday - are also good predictors of how many donuts will be sold on those days. The item category also plays a role, which reflects the fact that different consumers simply prefer different types of donuts. Other features are weaker predictors of donut sales.
+
+
+### Evaluating the model with test data<br>
+
+The first Random Forest predictions are made on the test dataset.
+
+```{python}
+train_final = d2wind.iloc[d2wind.index.get_level_values("date") >= pd.to_datetime("2021-07-12")].reset_index().set_index("date")
+
+xtest = d_test2.reset_index().set_index("date").drop("total_amount", axis = 1)
+ytest = d_test2.reset_index()[["date","total_amount"]].set_index("date")
+```
+
+```{python}
+with open('saved_models/rf_best1.pkl', mode='rb') as file:
+ rf_best = pickle.load(file)
+```
+
+```{python}
+#| collapsed: true
+xtest_final, ytestpred = pred_test(train = train_final, test = xtest, model = rf_best)
+```
+
+### Fit statistics for train and test dataset
+
+```{python}
+#| colab: {base_uri: 'https://localhost:8080/'}
+fit_overview(ytrain, ytrainpred, ytest, ytestpred)
+```
+
+The Random Forest model did better than the baseline model, with a **R-squared value of 0.94** and a **Mean Absolute Percentage Error (MAPE) of 22%**. The model's predictions are, on average, 26% over or under the actual sales. The results are further broken down into MAPE scores at the store and product category level.
+
+```{python}
+#| colab: {base_uri: 'https://localhost:8080/', height: 300}
+mape_stores(d_test2, ytestpred, breakdown = "stores").sort_values("MAPE").reset_index(drop = True)
+```
+
+```{python}
+#| colab: {base_uri: 'https://localhost:8080/', height: 1000}
+mape_stores(d_test2, ytestpred, breakdown = "stores_products").sort_values("MAPE").reset_index(drop = True)
+```
+
+While some stores and store-product combinations were predicted relatively well and their MAPE scores are low, other stores and products don't exhibit such good results. For an ensemble-based model, the forecasted sales are solid, but can certainly be improved upon. This is especially true for those store-product combinations with a MAPE of over 30%.
+
+Other models, especially methods relying on gradient boosting, can be leveraged to improve upon the baseline model's predictions. This is further explored in the CatBoost notebook.
+
+
+### Residual Plot Analysis
+
+The residual plot below shows the difference between the predicted and actual sales. Residuals were standardized with a mean 0.
+
+```{python}
+difference_df = diff_overview(data = d_test2, pred = ytestpred)
+```
+
+```{python}
+residual_plot(difference_df)
+```
+
+The first plot shows residuals excluding total daily sales. The second plot shows residuals with reference only to daily sales. The following observations can be made:
+
+* The residuals for the different product categories seem normally distributed, with most of them being centered around the mean and within 1 standard deviation. 
+
+* The product category plot seems to be rather heteroskedastic. Most notably, the mixed category - which sells boxes of different types of donuts - and monthly specials have relatively high residual errors, at least compared to other categories. Considering that most sold donuts belonged to the *mixed* category, it is no surprise that the model had difficulties predicting relatively high values correctly. The error distribution reveals that there may be some patterns in the dataset that the model didn't capture well enough and that could explain the sales trend. Another possibility is that some other variables - for example advertising or other special events - serve as better predictors for sales for these two categories. Alternatively, reclassfying the *mixed* group may yield a more precise represenatation of distinct donut categories that could individually explain sales better than the larger category.
+
+* In the total daily sales plot, there are only a few points with low daily sales. These sales are from stores that opened recently. Apart from that, the plot looks more or less homoskedastic, meaning there are no clear patterns.
+
+
+### Visualisation of predictions
+
+```{python}
+df_predicted = pd.concat(
+    [
+    d2.reset_index()[(d2.reset_index()["date"] >= pd.to_datetime("2024-05-01"))][["date","store_name","item_category","total_amount"]],
+    difference_df[["Date","Store name","Product category","Observed","Predicted"]].rename(columns = {"Date":"date","Store name":"store_name",
+                                                                                                     "Product category":"item_category","Observed":"total_amount"})
+    ]
+    ).sort_values(["date","store_name","item_category"]).reset_index(drop = True)
+```
+
+```{python}
+# specify item to view by product category: classics, mixed, monthly_specials, specials or daily total
+
+ts_predicted(df_predicted, item = "monthly_specials")
+```
+
+```{python}
+ts_predicted(df_predicted, item = "daily total")
+```
+
+Reflecting the MAPE scores of individual store-product pairs, the line charts show how precisely the Random Forest model could forecast sales. Some predictions are quite good for some store-product combinations, but fall short when it comes to forecasting sales for other stores and products. All in all, **only 12 of 40 store-product pairs have a MAPE of ~15%.** Ignoring the 3 stores that opened up recently, the highest MAPE scores are 35%, 34% and 32%. 
+
+There are some noticable fluctuations in sales in all of May, yet certain patterns may still be observed. Still, the model is having difficulties identifying those sales patterns for the test time period between May 25 and May 31, 2024. It is therefore necessary to try predicting the sales with a Catboost model, a gradient boosting-based algorithm that should prove more capable of handling fluctuating sales.
+
+
