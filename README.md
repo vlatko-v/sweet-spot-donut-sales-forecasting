@@ -215,7 +215,7 @@ The model was evaluated based on **R-square** and **MAPE** scores.
 
 ### Feature importances
 
-<img src="Visuals/feature_importances.png" width="600">
+<img src="Visuals/feature_importances.png" width="650">
 
 The most important features that explain sales are mainly related to temporal variables. Most notably, the model confirms the original assumption different weekdays - especially weekend days - are good predictors of sales. Window variables, especially moving averages and lag features, also explain sales trends well.
 
