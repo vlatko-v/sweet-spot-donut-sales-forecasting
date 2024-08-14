@@ -14,7 +14,7 @@ In the EU alone, food waste accounts for ~16% of the F&B sector's CO2 emissions.
 
 This Capstone project was completed as part of the [Spiced Academy Data Science Bootcamp](https://www.spiced-academy.com/en/program/data-science).
 
-The project was done in collaboration with:
+Project collaborators:
 
 * [Rachel Brochado](https://github.com/mrachelb)
 * [Alex Cabral](https://github.com/AlleeCabral)
